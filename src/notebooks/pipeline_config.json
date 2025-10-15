@@ -1,0 +1,40 @@
+{
+  "name": "pipeline_covid_classif",
+  "steps": [
+    {
+      "name": "img_loader",
+      "class": "ImageLoader",
+      "params": {}
+    },
+    {
+      "name": "img_resizer",
+      "class": "ImageResizer",
+      "params": { "img_size": [256, 256] }
+    },
+    {
+      "name": "img_masker",
+      "class": "ImageMasker",
+      "params": { "mask_paths": "masks" }
+    },
+    {
+      "name": "visualize_masked",
+      "class": "VisualizeTransformer",
+      "params": { "n_samples": 5, "prefix": "masked", "save_dir": "outputs/visu" }
+    },
+    {
+      "name": "img_flatten",
+      "class": "ImageFlattener",
+      "params": {}
+    },
+    {
+      "name": "save_features",
+      "class": "SaveTransformer",
+      "params": { "save_dir": "outputs", "prefix": "flattened" }
+    },
+    {
+      "name": "clf",
+      "class": "LogisticRegression",
+      "params": { "max_iter": 20, "verbose": 2, "random_state": 42 }
+    }
+  ]
+}
