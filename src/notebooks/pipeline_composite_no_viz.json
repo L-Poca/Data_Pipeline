@@ -1,23 +1,13 @@
 {
-  "name": "pipeline_composite_example",
-  "description": "Pipeline composite utilisant d'autres pipelines comme sous-étapes",
+  "name": "pipeline_composite_no_viz",
+  "description": "Pipeline composite sans visualisation (plus rapide pour les tests)",
   "type": "composite",
   "steps": [
     {
       "name": "preprocessing",
       "type": "pipeline",
       "pipeline_file": "pipeline_simple.json",
-      "exclude_steps": ["clf", "img_flatten"]
-    },
-    {
-      "name": "visualize",
-      "class": "VisualizeTransformer",
-      "params": { "n_samples": 3, "prefix": "composite", "save_dir": "outputs/composite" }
-    },
-    {
-      "name": "img_flatten",
-      "class": "ImageFlattener",
-      "params": {}
+      "exclude_steps": ["clf"]
     },
     {
       "name": "feature_engineering",

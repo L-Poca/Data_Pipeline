@@ -22,7 +22,12 @@
   },
   "composite": {
     "file": "pipeline_composite_example.json",
-    "description": "Exemple de pipeline composite",
+    "description": "Exemple de pipeline composite avec visualisation",
+    "category": "composite"
+  },
+  "composite_no_viz": {
+    "file": "pipeline_composite_no_viz.json",
+    "description": "Pipeline composite sans visualisation (plus rapide)",
     "category": "composite"
   }
 }
