@@ -39,26 +39,26 @@ Pipeline avec augmentation de données et masquage pour améliorer la robustesse
   - LogisticRegression
 
 #### `pipeline_feature_engineering.json`
-Pipeline avec feature engineering avancé pour extraction de caractéristiques complexes.
+Pipeline avec feature engineering avancé pour extraction de caractéristiques complexes (histogrammes, PCA).
 - **Catégorie**: feature_engineering
 - **Étapes**:
   - ImageLoader
   - ImageResizer (256x256)
   - ImageNormalizer
-  - ImageFeatureExtractor
+  - ImageMasker
   - ImageFlattener
-  - ImageStandardScaler
+  - ImageHistogram (64 bins)
+  - ImagePCA (50 composantes)
   - LogisticRegression
 
 #### `pipeline_composite_example.json`
-Exemple de pipeline composite avec visualisation des résultats.
+Exemple de pipeline composite avec visualisation des résultats. Combine d'autres pipelines.
 - **Catégorie**: composite
 - **Étapes**:
-  - ImageLoader
-  - ImageResizer (256x256)
-  - ImageNormalizer
-  - ImageVisualizer
+  - Preprocessing (depuis pipeline_simple, sans clf et flatten)
+  - VisualizeTransformer
   - ImageFlattener
+  - Feature Engineering (depuis pipeline_feature_engineering: histogram + PCA)
   - LogisticRegression
 
 #### `pipeline_composite_no_viz.json`
