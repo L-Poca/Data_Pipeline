@@ -6,7 +6,7 @@
     {
       "name": "preprocessing",
       "type": "pipeline",
-      "pipeline_file": "pipeline_simple.json",
+      "pipeline_file": "../../src/features/Pipelines/Configs_Pipelines/pipeline_simple.json",
       "exclude_steps": ["clf", "img_flatten"]
     },
     {
@@ -22,7 +22,7 @@
     {
       "name": "feature_engineering",
       "type": "pipeline", 
-      "pipeline_file": "pipeline_feature_engineering.json",
+      "pipeline_file": "../../src/features/Pipelines/Configs_Pipelines/pipeline_feature_engineering.json",
       "include_steps": ["img_histogram", "img_pca"]
     },
     {
