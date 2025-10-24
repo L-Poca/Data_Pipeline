@@ -12,12 +12,30 @@ class ImageHistogram(BaseEstimator, TransformerMixin):
     def __init__(self, bins=32):
         self.bins = bins
 
-    def fit(self, X, y=None):
+    def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Fit the transformer (no-op for histogram computation).
+        
+        Args:
+            data_x: Input data (unused)
+            data_y: Target data (unused)
+            
+        Returns:
+            self: Returns self for method chaining
+        """
         return self
 
-    def transform(self, X, y=None):
+    def transform(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Transform images by computing histograms.
+        
+        Args:
+            data_x: Array of images to transform
+            data_y: Target data (unused)
+            
+        Returns:
+            np.ndarray: Array of histogram features
+        """
         print(f"Calcul des histogrammes ({self.bins} bins)")
-        histos = [np.histogram(img.flatten(), bins=self.bins, range=(0, 1))[0] for img in X]
+        histos = [np.histogram(img.flatten(), bins=self.bins, range=(0, 1))[0] for img in data_x]
         return np.array(histos)
 
 
@@ -28,18 +46,36 @@ class ImagePCA(BaseEstimator, TransformerMixin):
         self.n_components = n_components
         self.pca = PCA(n_components=n_components)
 
-    def fit(self, X, y=None):
-        n_samples = X.shape[0]
-        X_flat = X.reshape(n_samples, -1)
-        self.pca.fit(X_flat)
+    def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Fit PCA on flattened images.
+        
+        Args:
+            data_x: Array of images to fit PCA on
+            data_y: Target data (unused)
+            
+        Returns:
+            self: Returns self for method chaining
+        """
+        n_samples = data_x.shape[0]
+        data_flat = data_x.reshape(n_samples, -1)
+        self.pca.fit(data_flat)
         return self
 
-    def transform(self, X, y=None):
-        n_samples = X.shape[0]
-        X_flat = X.reshape(n_samples, -1)
-        X_pca = self.pca.transform(X_flat)
-        print(f"PCA terminé. Shape: {X_pca.shape}")
-        return X_pca
+    def transform(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Transform images using fitted PCA.
+        
+        Args:
+            data_x: Array of images to transform
+            data_y: Target data (unused)
+            
+        Returns:
+            np.ndarray: PCA-transformed features
+        """
+        n_samples = data_x.shape[0]
+        data_flat = data_x.reshape(n_samples, -1)
+        data_pca = self.pca.transform(data_flat)
+        print(f"PCA terminé. Shape: {data_pca.shape}")
+        return data_pca
 
 
 class ImageStandardScaler(BaseEstimator, TransformerMixin):
@@ -48,15 +84,33 @@ class ImageStandardScaler(BaseEstimator, TransformerMixin):
     def __init__(self):
         self.scaler = StandardScaler()
 
-    def fit(self, X, y=None):
-        n_samples = X.shape[0]
-        X_flat = X.reshape(n_samples, -1)
-        self.scaler.fit(X_flat)
+    def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Fit StandardScaler on flattened images.
+        
+        Args:
+            data_x: Array of images to fit scaler on
+            data_y: Target data (unused)
+            
+        Returns:
+            self: Returns self for method chaining
+        """
+        n_samples = data_x.shape[0]
+        data_flat = data_x.reshape(n_samples, -1)
+        self.scaler.fit(data_flat)
         return self
 
-    def transform(self, X, y=None):
-        n_samples = X.shape[0]
-        X_flat = X.reshape(n_samples, -1)
-        X_scaled = self.scaler.transform(X_flat)
-        print(f"Standardisation terminée. Shape: {X_scaled.shape}")
-        return X_scaled.reshape(X.shape)
+    def transform(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Transform images using fitted StandardScaler.
+        
+        Args:
+            data_x: Array of images to transform
+            data_y: Target data (unused)
+            
+        Returns:
+            np.ndarray: Standardized images
+        """
+        n_samples = data_x.shape[0]
+        data_flat = data_x.reshape(n_samples, -1)
+        data_scaled = self.scaler.transform(data_flat)
+        print(f"Standardisation terminée. Shape: {data_scaled.shape}")
+        return data_scaled.reshape(data_x.shape)

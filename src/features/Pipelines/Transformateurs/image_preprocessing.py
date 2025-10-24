@@ -12,13 +12,30 @@ class ImageResizer(BaseEstimator, TransformerMixin):
     def __init__(self, img_size=(256, 256)):
         self.img_size = img_size
 
-    def fit(self, X, y=None):
+    def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Fit the transformer (no-op for resizing).
+        
+        Args:
+            data_x: Input data (unused)
+            data_y: Target data (unused)
+            
+        Returns:
+            self: Returns self for method chaining
+        """
         return self
 
-    def transform(self, X):
-        print(f"\nRedimensionnement de {len(X)} images en {self.img_size} ...")
+    def transform(self, data_x):
+        """Transform images by resizing them to target size.
+        
+        Args:
+            data_x: Array of images to resize
+            
+        Returns:
+            np.ndarray: Resized images as numpy arrays
+        """
+        print(f"\nRedimensionnement de {len(data_x)} images en {self.img_size} ...")
         resized = []
-        for img in tqdm(X, desc="Redimensionnement"):
+        for img in tqdm(data_x, desc="Redimensionnement"):
             if isinstance(img, np.ndarray):
                 img = Image.fromarray(img)
             img_resized = img.resize(self.img_size)
@@ -30,14 +47,32 @@ class ImageResizer(BaseEstimator, TransformerMixin):
 class ImageNormalizer(BaseEstimator, TransformerMixin):
     """Normalise les images (array) pixel-wise entre 0 et 1."""
 
-    def fit(self, X, y=None):
+    def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Fit the transformer (no-op for normalization).
+        
+        Args:
+            data_x: Input data (unused)
+            data_y: Target data (unused)
+            
+        Returns:
+            self: Returns self for method chaining
+        """
         return self
 
-    def transform(self, X, y=None):
-        print(f"\nNormalisation de {len(X)} images ...")
-        X_norm = np.array(X).astype(np.float32) / 255.0
+    def transform(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Transform images by normalizing pixel values to [0, 1].
+        
+        Args:
+            data_x: Array of images to normalize
+            data_y: Target data (unused)
+            
+        Returns:
+            np.ndarray: Normalized images
+        """
+        print(f"\nNormalisation de {len(data_x)} images ...")
+        data_norm = np.array(data_x).astype(np.float32) / 255.0
         print("Normalisation terminée.\n")
-        return X_norm
+        return data_norm
 
 
 class ImageMasker(BaseEstimator, TransformerMixin):
@@ -46,13 +81,32 @@ class ImageMasker(BaseEstimator, TransformerMixin):
     def __init__(self, mask_paths):
         self.mask_paths = mask_paths
 
-    def fit(self, X, y=None):
+    def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Fit the transformer (no-op for masking).
+        
+        Args:
+            data_x: Input data (unused)
+            data_y: Target data (unused)
+            
+        Returns:
+            self: Returns self for method chaining
+        """
         return self
 
-    def transform(self, X):
-        print(f"\nApplication des masques sur {len(X)} images ...")
+    def transform(self, data_x):
+        """Transform images by applying masks.
+        
+        Args:
+            data_x: Array of images to mask
+            
+        Returns:
+            np.ndarray: Masked images
+        """
+        print(f"\nApplication des masques sur {len(data_x)} images ...")
         masked = []
-        for img, mask_path in tqdm(zip(X, self.mask_paths), desc="Masquage", total=len(X)):
+        for img, mask_path in tqdm(
+            zip(data_x, self.mask_paths), desc="Masquage", total=len(data_x)
+        ):
             mask = Image.open(mask_path).convert('L').resize(img.shape[::-1])
             mask_arr = np.array(mask) > 0  # binaire
             masked.append(img * mask_arr)
@@ -63,17 +117,34 @@ class ImageMasker(BaseEstimator, TransformerMixin):
 class ImageFlattener(BaseEstimator, TransformerMixin):
     """Aplatit les images pour les modèles ML."""
 
-    def fit(self, X, y=None):
+    def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Fit the transformer (no-op for flattening).
+        
+        Args:
+            data_x: Input data (unused)
+            data_y: Target data (unused)
+            
+        Returns:
+            self: Returns self for method chaining
+        """
         return self
 
-    def transform(self, X):
-        print(f"\nAplatissement de {X.shape[0]} images ...")
-        X_flat = []
-        for img in tqdm(X, desc="Aplatissement"):
-            X_flat.append(img.flatten())
-        X_flat = np.array(X_flat)
+    def transform(self, data_x):
+        """Transform images by flattening them to 1D arrays.
+        
+        Args:
+            data_x: Array of images to flatten
+            
+        Returns:
+            np.ndarray: Flattened images
+        """
+        print(f"\nAplatissement de {data_x.shape[0]} images ...")
+        data_flat = []
+        for img in tqdm(data_x, desc="Aplatissement"):
+            data_flat.append(img.flatten())
+        data_flat = np.array(data_flat)
         print("Aplatissement terminé.\n")
-        return X_flat
+        return data_flat
 
 
 class ImageBinarizer(BaseEstimator, TransformerMixin):
@@ -82,9 +153,27 @@ class ImageBinarizer(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.5):
         self.threshold = threshold
 
-    def fit(self, X, y=None):
+    def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Fit the transformer (no-op for binarization).
+        
+        Args:
+            data_x: Input data (unused)
+            data_y: Target data (unused)
+            
+        Returns:
+            self: Returns self for method chaining
+        """
         return self
 
-    def transform(self, X, y=None):
+    def transform(self, data_x, data_y=None):  # pylint: disable=unused-argument
+        """Transform images by applying binary thresholding.
+        
+        Args:
+            data_x: Array of images to binarize
+            data_y: Target data (unused)
+            
+        Returns:
+            np.ndarray: Binarized images
+        """
         print(f"Binarisation avec seuil {self.threshold}")
-        return (X > self.threshold).astype(np.float32)
+        return (data_x > self.threshold).astype(np.float32)
