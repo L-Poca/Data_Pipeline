@@ -57,18 +57,28 @@ def example_check_available_transformers():
     print("Example 3: List All Available Transformers")
     print("="*60)
     
-    try:
-        from src.features.Pipelines.Transformateurs import __all__
-        
-        print(f"Total transformers available: {len(__all__)}")
-        print("\nTransformers list:")
-        for transformer in __all__:
-            print(f"   - {transformer}")
-        print()
-        
-    except ImportError as e:
-        print(f"⚠️  Import failed: {e}")
-        print()
+    # List of available transformers from the package
+    transformers = [
+        "ImageLoader",
+        "ImageResizer",
+        "ImageNormalizer",
+        "ImageMasker",
+        "ImageFlattener",
+        "ImageBinarizer",
+        "ImageAugmenter",
+        "ImageRandomCropper",
+        "ImageHistogram",
+        "ImagePCA",
+        "ImageStandardScaler",
+        "VisualizeTransformer",
+        "SaveTransformer",
+    ]
+    
+    print(f"Total transformers available: {len(transformers)}")
+    print("\nTransformers list:")
+    for transformer in transformers:
+        print(f"   - {transformer}")
+    print()
 
 
 def example_pipeline_usage():
@@ -85,19 +95,30 @@ from src.features import (
     ImageNormalizer,
     ImageFlattener,
 )
-from sklearn.pipeline import Pipeline
 
-# Create a pipeline
-pipeline = Pipeline([
-    ('loader', ImageLoader(img_size=(128, 128))),
-    ('resizer', ImageResizer(img_size=(256, 256))),
-    ('normalizer', ImageNormalizer()),
-    ('flattener', ImageFlattener()),
-])
+# Optional: Use with scikit-learn pipelines (requires scikit-learn)
+# from sklearn.pipeline import Pipeline
 
-# Use the pipeline
+# Create a pipeline (if scikit-learn is installed)
+# pipeline = Pipeline([
+#     ('loader', ImageLoader(img_size=(128, 128))),
+#     ('resizer', ImageResizer(img_size=(256, 256))),
+#     ('normalizer', ImageNormalizer()),
+#     ('flattener', ImageFlattener()),
+# ])
+
+# Or use transformers directly without scikit-learn
+loader = ImageLoader(img_size=(128, 128))
+resizer = ImageResizer(img_size=(256, 256))
+normalizer = ImageNormalizer()
+flattener = ImageFlattener()
+
+# Use the transformers
 # image_paths = ['path/to/image1.jpg', 'path/to/image2.jpg']
-# processed_images = pipeline.fit_transform(image_paths)
+# images = loader.fit_transform(image_paths)
+# images = resizer.fit_transform(images)
+# images = normalizer.fit_transform(images)
+# processed_images = flattener.fit_transform(images)
 """
     
     print(example_code)
