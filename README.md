@@ -1,6 +1,31 @@
 # 🦠 Détection COVID-19
 ## Application de détection COVID-19 à partir d'images radiographiques
 
+## Installation
+
+Ce projet est maintenant un package Python installable. Pour l'installer en mode développement :
+
+```bash
+pip install -e .
+```
+
+Pour plus d'informations sur l'installation, consultez [INSTALLATION.md](INSTALLATION.md).
+
+## Usage
+
+Après installation, vous pouvez importer les transformateurs :
+
+```python
+from src.features import (
+    ImageLoader,
+    ImageResizer,
+    ImageNormalizer,
+    # ... et d'autres transformateurs
+)
+```
+
+Voir [examples/basic_usage.py](examples/basic_usage.py) pour des exemples d'utilisation.
+
 Project Organization
 ------------
 
