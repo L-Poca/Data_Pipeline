@@ -131,7 +131,8 @@ def get_transformer_class(nom_classe: str) -> type:
         'src.features.Pipelines.Transformateurs.image_preprocessing',
         'src.features.Pipelines.Transformateurs.image_features',
         'src.features.Pipelines.Transformateurs.image_augmentation',
-        'src.features.Pipelines.Transformateurs.utilities'
+        'src.features.Pipelines.Transformateurs.utilities',
+        'src.features.Pipelines.Transformateurs.tensorflow_transformers'
     ]
 
     for module_name in modules_transformateurs:
