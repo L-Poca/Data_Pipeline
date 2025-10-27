@@ -36,7 +36,8 @@ class TensorFlowFeatureExtractor(BaseEstimator, TransformerMixin):
     def __init__(self, model_name: str = 'VGG16', include_top: bool = False,
                  pooling: str = 'avg',
                  input_shape: Tuple[int, int, int] = (224, 224, 3),
-                 trainable: bool = False):
+                 trainable: bool = False,
+                 random_state=None):
         """
         Initialise l'extracteur de caractéristiques.
 
@@ -46,6 +47,7 @@ class TensorFlowFeatureExtractor(BaseEstimator, TransformerMixin):
             pooling (str): Type de pooling global ('avg', 'max', None)
             input_shape (Tuple): Forme des images d'entrée (height, width, channels)
             trainable (bool): Si les poids du modèle sont entraînables
+            random_state (int, None): État aléatoire pour la reproductibilité
 
         Raises:
             ImportError: Si TensorFlow n'est pas installé
@@ -61,6 +63,7 @@ class TensorFlowFeatureExtractor(BaseEstimator, TransformerMixin):
         self.input_shape = input_shape
         self.trainable = trainable
         self.model = None
+        self.random_state = random_state
 
     def _get_pretrained_model(self):
         """Récupère le modèle pré-entraîné selon le nom spécifié."""

@@ -1,9 +1,12 @@
 """Image feature extraction transformers for the data pipeline."""
 
+from matplotlib import pyplot as plt
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+
+from src.features.Pipelines.Visualisations.Visu_PCA import *
 
 
 class ImageHistogram(BaseEstimator, TransformerMixin):
@@ -42,9 +45,10 @@ class ImageHistogram(BaseEstimator, TransformerMixin):
 class ImagePCA(BaseEstimator, TransformerMixin):
     """Réduction de dimension par ACP (PCA) sur les images aplaties."""
 
-    def __init__(self, n_components=50):
+    def __init__(self, n_components=50, random_state=None):
         self.n_components = n_components
-        self.pca = PCA(n_components=n_components)
+        self.random_state = random_state
+        self.pca = PCA(n_components=n_components, random_state=random_state)
 
     def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
         """Fit PCA on flattened images.
@@ -59,6 +63,7 @@ class ImagePCA(BaseEstimator, TransformerMixin):
         n_samples = data_x.shape[0]
         data_flat = data_x.reshape(n_samples, -1)
         self.pca.fit(data_flat)
+        
         return self
 
     def transform(self, data_x, data_y=None):  # pylint: disable=unused-argument
@@ -74,9 +79,14 @@ class ImagePCA(BaseEstimator, TransformerMixin):
         n_samples = data_x.shape[0]
         data_flat = data_x.reshape(n_samples, -1)
         data_pca = self.pca.transform(data_flat)
-        print(f"PCA terminé. Shape: {data_pca.shape}")
+        
+        
+
+        afficher_pca(self.pca, data_x, data_flat, data_pca)
+        create_interactive_pca_plot(self.pca, data_x, data_pca)
         return data_pca
 
+    
 
 class ImageStandardScaler(BaseEstimator, TransformerMixin):
     """Applique un StandardScaler pixel-wise sur les images aplaties."""
@@ -112,5 +122,5 @@ class ImageStandardScaler(BaseEstimator, TransformerMixin):
         n_samples = data_x.shape[0]
         data_flat = data_x.reshape(n_samples, -1)
         data_scaled = self.scaler.transform(data_flat)
-        print(f"Standardisation terminée. Shape: {data_scaled.shape}")
+        print(f"\nStandardisation terminée. Shape: {data_scaled.shape}")
         return data_scaled.reshape(data_x.shape)

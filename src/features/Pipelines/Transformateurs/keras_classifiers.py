@@ -36,7 +36,7 @@ class KerasClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, model_builder=None, epochs: int = 100, batch_size: int = 32,
                  validation_split: float = 0.2, verbose: int = 1,
                  input_shape: Tuple[int, int, int] = (224, 224, 3),
-                 num_classes: Optional[int] = None, **keras_params):
+                 num_classes: Optional[int] = None, random_state=None, **keras_params):
         """
         Initialise le classificateur Keras.
 
@@ -48,6 +48,7 @@ class KerasClassifier(BaseEstimator, ClassifierMixin):
             verbose (int): Niveau de verbosité
             input_shape (Tuple): Forme des données d'entrée
             num_classes (int): Nombre de classes (détecté automatiquement si None)
+            random_state: État aléatoire pour la reproductibilité
             **keras_params: Paramètres additionnels pour le modèle
         """
         if not TENSORFLOW_AVAILABLE:
@@ -61,6 +62,7 @@ class KerasClassifier(BaseEstimator, ClassifierMixin):
         self.verbose = verbose
         self.input_shape = input_shape
         self.num_classes = num_classes
+        self.random_state = random_state
         self.keras_params = keras_params
 
         self.model = None

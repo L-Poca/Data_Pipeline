@@ -57,29 +57,139 @@ def load_paths_data_raw(root_dir: str) -> Tuple[List[str], List[str], List[str]]
     return chemins_images, chemins_masques, etiquettes
 
 
-def load_pipeline_by_name(nom_pipeline: str, masques: Optional[List[str]] = None) -> Pipeline:
+def discover_available_pipelines(configs_dir: str = None) -> Dict[str, Dict[str, Any]]:
     """
-    Charge un pipeline par son nom depuis le registre.
+    Découvre automatiquement tous les pipelines disponibles en scannant le dossier de configurations.
+
+    Args:
+        configs_dir (str, optional): Chemin vers le dossier des configurations.
+                                   Si None, utilise le chemin par défaut.
+
+    Returns:
+        Dict[str, Dict[str, Any]]: Dictionnaire des pipelines disponibles avec leurs métadonnées.
+                                 Format: {nom_pipeline: {file: str, name: str, description: str, category: str}}
+
+    Raises:
+        OSError: Si le dossier de configurations n'existe pas
+    """
+    if configs_dir is None:
+        configs_dir = os.path.join(
+            os.path.dirname(__file__), 
+            "Configs_Pipelines"
+        )
+    
+    if not os.path.exists(configs_dir):
+        raise OSError(f"Le dossier de configurations '{configs_dir}' n'existe pas")
+
+    pipelines_disponibles = {}
+    
+    # Scanner tous les fichiers JSON dans le dossier
+    pattern_json = os.path.join(configs_dir, "*.json")
+    
+    for chemin_fichier in glob.glob(pattern_json):
+        nom_fichier = os.path.basename(chemin_fichier)
+        
+        # Ignorer les fichiers de configuration système
+        if nom_fichier in ["pipeline_config.json", "config.json", "settings.json"]:
+            continue
+            
+        try:
+            # Charger et analyser le fichier de configuration
+            with open(chemin_fichier, 'r', encoding='utf-8') as fichier:
+                config = json.load(fichier)
+            
+            # Extraire le nom du pipeline (nom du fichier sans extension)
+            nom_pipeline = os.path.splitext(nom_fichier)[0]
+            
+            # Nettoyer le nom (retirer les préfixes comme "pipeline_")
+            if nom_pipeline.startswith("pipeline_"):
+                nom_pipeline_clean = nom_pipeline[9:]  # Retirer "pipeline_"
+            else:
+                nom_pipeline_clean = nom_pipeline
+                
+            # Déterminer la catégorie automatiquement
+            category = _detect_pipeline_category(config, nom_pipeline)
+            
+            # Créer l'entrée du registre
+            pipelines_disponibles[nom_pipeline_clean] = {
+                "file": chemin_fichier,
+                "name": config.get("name", nom_pipeline_clean.replace("_", " ").title()),
+                "description": config.get("description", f"Pipeline {nom_pipeline_clean}"),
+                "category": category,
+                "original_filename": nom_fichier
+            }
+            
+        except (json.JSONDecodeError, KeyError, OSError) as e:
+            print(f"⚠️  Impossible de charger {nom_fichier}: {e}")
+            continue
+    
+    return pipelines_disponibles
+
+
+def _detect_pipeline_category(config: Dict[str, Any], nom_pipeline: str) -> str:
+    """
+    Détecte automatiquement la catégorie d'un pipeline basé sur sa configuration.
+
+    Args:
+        config (Dict[str, Any]): Configuration du pipeline
+        nom_pipeline (str): Nom du pipeline
+
+    Returns:
+        str: Catégorie détectée
+    """
+    # Vérifier si la catégorie est explicitement définie
+    if "category" in config:
+        return config["category"]
+    
+    # Détection basée sur le nom
+    nom_lower = nom_pipeline.lower()
+    
+    if "composite" in nom_lower:
+        return "composite"
+    elif "tensorflow" in nom_lower or "keras" in nom_lower or "transfer" in nom_lower:
+        return "deep_learning"
+    elif "augment" in nom_lower:
+        return "data_augmentation"
+    elif "feature" in nom_lower:
+        return "feature_engineering"
+    elif "simple" in nom_lower or "basic" in nom_lower:
+        return "basic"
+    
+    # Détection basée sur les étapes du pipeline
+    steps = config.get("steps", [])
+    step_classes = [step.get("class", "").lower() for step in steps]
+    
+    if any("tensorflow" in cls or "keras" in cls for cls in step_classes):
+        return "deep_learning"
+    elif any("augment" in cls for cls in step_classes):
+        return "data_augmentation"
+    elif any("feature" in cls or "pca" in cls for cls in step_classes):
+        return "feature_engineering"
+    elif config.get("type") == "composite":
+        return "composite"
+    else:
+        return "data_processing"
+
+
+def load_pipeline_by_name(nom_pipeline: str, masques: Optional[List[str]] = None, 
+                         configs_dir: str = None) -> Pipeline:
+    """
+    Charge un pipeline par son nom en utilisant la découverte automatique.
 
     Args:
         nom_pipeline (str): Nom du pipeline à charger
         masques (Optional[List[str]]): Liste optionnelle de chemins de masques à injecter
+        configs_dir (str, optional): Chemin vers le dossier des configurations
 
     Returns:
         Pipeline: Objet Pipeline scikit-learn configuré
 
     Raises:
-        ValueError: Si nom_pipeline n'est pas trouvé dans le registre
+        ValueError: Si nom_pipeline n'est pas trouvé
         FileNotFoundError: Si les fichiers de configuration ne sont pas trouvés
     """
-    chemin_config = "../../src/features/Pipelines/Configs_Pipelines/pipeline_config.json"
-    config_registre = load_pipeline_config(chemin_config)
-
-    # Filtrer les entrées de métadonnées
-    pipelines_disponibles = {
-        k: v for k, v in config_registre.items()
-        if isinstance(v, dict) and "file" in v
-    }
+    # Découvrir automatiquement les pipelines disponibles
+    pipelines_disponibles = discover_available_pipelines(configs_dir)
 
     if nom_pipeline not in pipelines_disponibles:
         disponibles = list(pipelines_disponibles.keys())
@@ -87,13 +197,45 @@ def load_pipeline_by_name(nom_pipeline: str, masques: Optional[List[str]] = None
             f"Pipeline '{nom_pipeline}' non trouvé. Disponibles : {disponibles}"
         )
 
-    fichier_pipeline = pipelines_disponibles[nom_pipeline]["file"]
+    pipeline_info = pipelines_disponibles[nom_pipeline]
+    fichier_pipeline = pipeline_info["file"]
     config_pipeline = load_pipeline_config(fichier_pipeline)
 
-    print(f"Chargement du pipeline : {config_pipeline['name']}")
-    print(f"Description : {config_pipeline['description']}")
+    print(f"Chargement du pipeline : {pipeline_info['name']}")
+    print(f"Description : {pipeline_info['description']}")
+    print(f"Catégorie : {pipeline_info['category']}")
 
     return create_pipeline_from_config(config_pipeline, masques)
+
+
+def get_default_pipeline(masques: Optional[List[str]] = None, configs_dir: str = None) -> Pipeline:
+    """
+    Charge le pipeline par défaut (simple) ou le premier disponible.
+
+    Args:
+        masques (Optional[List[str]]): Liste optionnelle de chemins de masques à injecter
+        configs_dir (str, optional): Chemin vers le dossier des configurations
+
+    Returns:
+        Pipeline: Objet Pipeline scikit-learn configuré
+
+    Raises:
+        ValueError: Si aucun pipeline n'est disponible
+    """
+    pipelines_disponibles = discover_available_pipelines(configs_dir)
+    
+    if not pipelines_disponibles:
+        raise ValueError("Aucun pipeline disponible")
+    
+    # Essayer de trouver le pipeline "simple" en priorité
+    for nom_prefere in ["simple", "basic", "default"]:
+        if nom_prefere in pipelines_disponibles:
+            return load_pipeline_by_name(nom_prefere, masques, configs_dir)
+    
+    # Sinon, prendre le premier disponible
+    premier_pipeline = list(pipelines_disponibles.keys())[0]
+    print(f"⚠️  Aucun pipeline par défaut trouvé, utilisation de '{premier_pipeline}'")
+    return load_pipeline_by_name(premier_pipeline, masques, configs_dir)
 
 
 def get_transformer_class(nom_classe: str) -> type:
@@ -125,14 +267,20 @@ def get_transformer_class(nom_classe: str) -> type:
     finally:
         del frame
 
-    # 2. Chercher dans les modules de transformateurs
+    # 2. Chercher dans les modules de transformateurs et sklearn
     modules_transformateurs = [
         'src.features.Pipelines.Transformateurs.image_loaders',
         'src.features.Pipelines.Transformateurs.image_preprocessing',
         'src.features.Pipelines.Transformateurs.image_features',
         'src.features.Pipelines.Transformateurs.image_augmentation',
         'src.features.Pipelines.Transformateurs.utilities',
-        'src.features.Pipelines.Transformateurs.tensorflow_transformers'
+        'src.features.Pipelines.Transformateurs.tensorflow_transformers',
+        'sklearn.linear_model',
+        'sklearn.ensemble',
+        'sklearn.svm',
+        'sklearn.tree',
+        'sklearn.naive_bayes',
+        'sklearn.neighbors'
     ]
 
     for module_name in modules_transformateurs:
@@ -293,3 +441,124 @@ def create_composite_pipeline(config: Dict[str, Any],
             toutes_etapes.append((etape["name"], classe_transformateur(**parametres)))
 
     return Pipeline(toutes_etapes, verbose=True)
+
+
+def print_available_pipelines(configs_dir: str = None) -> None:
+    """
+    Affiche tous les pipelines disponibles organisés par catégorie.
+
+    Args:
+        configs_dir (str, optional): Chemin vers le dossier des configurations
+    """
+    try:
+        pipelines_disponibles = discover_available_pipelines(configs_dir)
+        
+        if not pipelines_disponibles:
+            print("❌ Aucun pipeline disponible")
+            return
+        
+        print("🔍 Pipelines découverts automatiquement:")
+        print("=" * 60)
+        
+        # Organiser par catégorie
+        categories = {}
+        for nom, info in pipelines_disponibles.items():
+            category = info.get("category", "other")
+            if category not in categories:
+                categories[category] = []
+            categories[category].append((nom, info))
+        
+        # Afficher par catégorie
+        for category, pipelines in sorted(categories.items()):
+            print(f"\n📁 Catégorie: {category.upper()}")
+            print("-" * 40)
+            
+            for nom, info in sorted(pipelines):
+                print(f"  📄 {nom}")
+                print(f"     Nom: {info['name']}")
+                print(f"     Description: {info['description']}")
+                print(f"     Fichier: {info['original_filename']}")
+                print()
+        
+        print(f"📊 Total: {len(pipelines_disponibles)} pipeline(s) trouvé(s)")
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de la découverte des pipelines: {e}")
+
+
+def list_pipelines_by_category(category: str = None, configs_dir: str = None) -> List[str]:
+    """
+    Liste les noms des pipelines disponibles, optionnellement filtrés par catégorie.
+
+    Args:
+        category (str, optional): Catégorie à filtrer (ex: 'deep_learning', 'basic')
+        configs_dir (str, optional): Chemin vers le dossier des configurations
+
+    Returns:
+        List[str]: Liste des noms de pipelines
+
+    Raises:
+        ValueError: Si la catégorie spécifiée n'existe pas
+    """
+    pipelines_disponibles = discover_available_pipelines(configs_dir)
+    
+    if category is None:
+        return list(pipelines_disponibles.keys())
+    
+    # Filtrer par catégorie
+    pipelines_filtres = [
+        nom for nom, info in pipelines_disponibles.items()
+        if info.get("category", "").lower() == category.lower()
+    ]
+    
+    if not pipelines_filtres and category:
+        categories_disponibles = set(
+            info.get("category", "") for info in pipelines_disponibles.values()
+        )
+        raise ValueError(
+            f"Catégorie '{category}' non trouvée. "
+            f"Disponibles: {sorted(categories_disponibles)}"
+        )
+    
+    return pipelines_filtres
+
+
+def set_pipeline_random_state(pipeline, random_state):
+    """Applique une seed à tous les composants du pipeline qui l'acceptent"""
+    print(f"\n🎲 Application de la seed {random_state} au pipeline:\n")
+    for step_name, step in pipeline.steps:
+        if hasattr(step, 'random_state'):
+            step.random_state = random_state
+            print(f"  ✅ Seed {random_state} appliquée à {step_name}")
+        elif hasattr(step, 'set_params'):
+            try:
+                step.set_params(random_state=random_state)
+                print(f"  ✅ Seed {random_state} appliquée à {step_name} via set_params")
+            except:
+                print(f"  ⚠️  {step_name} ne supporte pas random_state")
+
+def display_pipeline_structure(registry_config: Dict[str, Any]) -> None:
+    """Affiche la structure du pipeline de manière lisible"""
+    print("Pipelines disponibles:")
+    print("=" * 50)
+
+    # Organiser par catégorie
+    categories = {}
+    for name, info in registry_config.items():
+        # Ignorer les métadonnées
+        if name in ["description"]:
+            continue
+        
+        if isinstance(info, dict) and "category" in info:
+            category = info.get("category", "other")
+            if category not in categories:
+                categories[category] = []
+            categories[category].append((name, info))
+
+    # Afficher par catégorie
+    for category, pipelines in sorted(categories.items()):
+        print(f"\nCatégorie: {category.upper()}\n")
+        for name, info in pipelines:
+            status = "(par défaut)" if name == "default" else ""
+            print(f"  {name}: {info['description']} {status}")
+            print(f"     Fichier: {info['original_filename']}\n")

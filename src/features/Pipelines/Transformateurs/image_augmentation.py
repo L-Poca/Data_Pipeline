@@ -9,16 +9,14 @@ from sklearn.base import BaseEstimator, TransformerMixin
 class ImageAugmenter(BaseEstimator, TransformerMixin):
     """Applique une augmentation simple (flip horizontal) à la moitié des images."""
 
-    def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
-        """Fit the transformer (no-op for augmentation).
+    def __init__(self, rotation_range=10, zoom_range=0.1, random_state=None):
+        self.rotation_range = rotation_range
+        self.zoom_range = zoom_range
+        self.random_state = random_state
         
-        Args:
-            data_x: Input data (unused)
-            data_y: Target data (unused)
-            
-        Returns:
-            self: Returns self for method chaining
-        """
+    def fit(self, X, y=None):
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
         return self
 
     def transform(self, data_x, data_y=None):  # pylint: disable=unused-argument
@@ -45,9 +43,10 @@ class ImageAugmenter(BaseEstimator, TransformerMixin):
 class ImageRandomCropper(BaseEstimator, TransformerMixin):
     """Effectue un crop aléatoire sur chaque image (carré centré ou décalé)."""
 
-    def __init__(self, crop_size=(224, 224)):
+    def __init__(self, crop_size=(224, 224), random_state=None):
         self.crop_size = crop_size
-
+        self.random_state = random_state
+        
     def fit(self, data_x, data_y=None):  # pylint: disable=unused-argument
         """Fit the transformer (no-op for random cropping).
         
@@ -70,6 +69,8 @@ class ImageRandomCropper(BaseEstimator, TransformerMixin):
         Returns:
             np.ndarray: Randomly cropped images
         """
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
         cropped = []
         for img in tqdm(data_x, desc="RandomCrop"):
             height, width = img.shape[:2]

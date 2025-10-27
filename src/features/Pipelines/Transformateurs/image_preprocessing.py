@@ -1,5 +1,6 @@
 """Image preprocessing transformers for the data pipeline."""
 
+from matplotlib import pyplot as plt
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
@@ -41,6 +42,20 @@ class ImageResizer(BaseEstimator, TransformerMixin):
             img_resized = img.resize(self.img_size)
             resized.append(np.array(img_resized))
         print("Redimensionnement terminé.\n")
+
+        tqdm.write("\nRésolutions Uniques des images après redimensionnement :")
+        for res in set(img.shape for img in resized):
+            tqdm.write(f" - {res}\n")
+
+        # Afficher quelsques exemples d'images redimensionnées
+        n_img = 3
+        for i in range(n_img):
+            plt.subplot(1, n_img, i + 1)
+            plt.imshow(resized[i], cmap='gray') 
+            plt.title(f"Image {i+1}")
+            plt.axis('off')
+        plt.show()
+
         return np.array(resized)
 
 
@@ -72,6 +87,16 @@ class ImageNormalizer(BaseEstimator, TransformerMixin):
         print(f"\nNormalisation de {len(data_x)} images ...")
         data_norm = np.array(data_x).astype(np.float32) / 255.0
         print("Normalisation terminée.\n")
+
+        # Afficher quelsques exemples d'images Normalisées
+        n_img = 3
+        for i in range(n_img):
+            plt.subplot(1, n_img, i + 1)
+            plt.imshow(data_norm[i], cmap='gray') 
+            plt.title(f"Image {i+1}")
+            plt.axis('off')
+        plt.show()
+
         return data_norm
 
 
@@ -111,6 +136,16 @@ class ImageMasker(BaseEstimator, TransformerMixin):
             mask_arr = np.array(mask) > 0  # binaire
             masked.append(img * mask_arr)
         print("Masquage terminé.\n")
+
+        # Afficher quelsques exemples d'images Masquées
+        n_img = 3
+        for i in range(n_img):
+            plt.subplot(1, n_img, i + 1)
+            plt.imshow(masked[i], cmap='gray') 
+            plt.title(f"Image {i+1}")
+            plt.axis('off')
+        plt.show()
+
         return np.array(masked)
 
 

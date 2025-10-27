@@ -28,14 +28,9 @@
       "params": {}
     },
     {
-      "name": "img_histogram",
-      "class": "ImageHistogram",
-      "params": { "bins": 64 }
-    },
-    {
       "name": "img_pca",
       "class": "ImagePCA",
-      "params": { "n_components": 50 }
+      "params": { "n_components": 100 }
     },
     {
       "name": "clf",

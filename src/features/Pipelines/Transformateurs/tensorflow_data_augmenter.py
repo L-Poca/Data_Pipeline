@@ -31,7 +31,7 @@ class TensorFlowDataAugmenter(BaseEstimator, TransformerMixin):
                  height_shift_range: float = 0.1, zoom_range: float = 0.1,
                  horizontal_flip: bool = True, 
                  brightness_range: Tuple[float, float] = (0.8, 1.2),
-                 apply_augmentation: bool = True):
+                 apply_augmentation: bool = True, random_state: int = None):
         """
         Initialise l'augmenteur de données.
 
@@ -43,6 +43,7 @@ class TensorFlowDataAugmenter(BaseEstimator, TransformerMixin):
             horizontal_flip (bool): Appliquer un retournement horizontal aléatoire
             brightness_range (Tuple): Plage d'ajustement de luminosité
             apply_augmentation (bool): Activer/désactiver l'augmentation
+            random_state (int): Seed pour les augmentations aléatoires
         """
         if not TENSORFLOW_AVAILABLE:
             raise ImportError("TensorFlow n'est pas installé. "
@@ -55,6 +56,10 @@ class TensorFlowDataAugmenter(BaseEstimator, TransformerMixin):
         self.horizontal_flip = horizontal_flip
         self.brightness_range = brightness_range
         self.apply_augmentation = apply_augmentation
+        self.random_state = random_state
+
+        # Augmentations aléatoires TensorFlow
+        tf.random.set_seed(self.random_state)
 
     def fit(self, X, y=None):
         """Ajuste l'augmenteur (pas d'ajustement nécessaire)."""
