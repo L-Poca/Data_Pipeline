@@ -72,11 +72,14 @@ if ENV == "colab":
     if result.returncode != 0:
         # Si la branche locale existe déjà, juste switcher
         subprocess.run(['git', 'checkout', 'rafael_cleaning'], capture_output=True)
-
-    print("📦 Downgrade de numpy vers 1.26.4...")
-
-    !pip install --no-cache-dir --force-reinstall numpy==1.26.4
     
+    # ✅ Utilisation des packages Colab natifs (NumPy 2.x, TensorFlow 2.19)
+    print("✅ Utilisation des packages Colab natifs:")
+    print("   • NumPy 2.0.2")
+    print("   • TensorFlow 2.19.0")
+    print("   • scikit-learn 1.6.1")
+    
+    # Installation du package en mode éditable
     print("📦 Installation du package...")
     result = subprocess.run(['pip', 'install', '-e', '.', '--quiet'], capture_output=True, text=True)
     if result.returncode != 0:
