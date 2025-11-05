@@ -128,22 +128,26 @@ class ImageAugmenter(BaseEstimator, TransformerMixin):
     def _apply_zoom(self, img: np.ndarray) -> np.ndarray:
         """Apply random zoom to image."""
         if self.zoom_range is not None:
+            original_shape = img.shape
             zoom_factor = self.rng_.uniform(*self.zoom_range)
             if zoom_factor != 1.0:
-                img = ndimage.zoom(img, zoom_factor, order=1)
-                # Crop or pad to original size
-                original_shape = img.shape
+                zoomed = ndimage.zoom(img, zoom_factor, order=1)
+                
+                # Ensure output has same shape as input
                 if zoom_factor > 1.0:
-                    # Crop center
-                    start = [(s - o) // 2 for s, o in zip(img.shape, original_shape)]
-                    img = img[start[0]:start[0]+original_shape[0], 
-                             start[1]:start[1]+original_shape[1]]
+                    # Crop center to original size
+                    h_start = (zoomed.shape[0] - original_shape[0]) // 2
+                    w_start = (zoomed.shape[1] - original_shape[1]) // 2
+                    img = zoomed[h_start:h_start+original_shape[0], 
+                                w_start:w_start+original_shape[1]]
                 else:
-                    # Pad
-                    pad_width = [(o - s) // 2 for s, o in zip(img.shape, original_shape)]
-                    img = np.pad(img, [(p, o-s-p) for p, s, o in 
-                                      zip(pad_width, img.shape, original_shape)], 
-                               mode='edge')
+                    # Pad to original size
+                    pad_h = (original_shape[0] - zoomed.shape[0]) // 2
+                    pad_w = (original_shape[1] - zoomed.shape[1]) // 2
+                    img = np.pad(zoomed, 
+                                ((pad_h, original_shape[0] - zoomed.shape[0] - pad_h),
+                                 (pad_w, original_shape[1] - zoomed.shape[1] - pad_w)), 
+                                mode='edge')
         return img
 
     def transform(self, data_x: np.ndarray, data_y=None) -> np.ndarray:
@@ -159,7 +163,7 @@ class ImageAugmenter(BaseEstimator, TransformerMixin):
         Returns
         -------
         np.ndarray
-            Augmented images
+            Augmented images with same shape as input
         """
         if not hasattr(self, 'rng_'):
             self.fit(data_x)
@@ -167,13 +171,16 @@ class ImageAugmenter(BaseEstimator, TransformerMixin):
         if self.verbose:
             logger.info(f"Augmenting {len(data_x)} images (p={self.probability})...")
         
+        data_array = np.array(data_x)
+        original_shape = data_array.shape
         data_aug = []
         n_augmented = 0
         
-        iterator = tqdm(data_x, desc="Augmentation") if self.verbose else data_x
+        iterator = tqdm(data_array, desc="Augmentation") if self.verbose else data_array
         
         for img in iterator:
             img_aug = img.copy()
+            target_shape = img.shape  # Save original shape of this image
             
             # Apply augmentation with given probability
             if self.rng_.random() < self.probability:
@@ -183,6 +190,13 @@ class ImageAugmenter(BaseEstimator, TransformerMixin):
                 img_aug = self._apply_noise(img_aug)
                 img_aug = self._apply_zoom(img_aug)
                 n_augmented += 1
+                
+                # Ensure shape consistency after all transforms
+                if img_aug.shape != target_shape:
+                    # Resize back to original shape if needed
+                    from scipy.ndimage import zoom
+                    zoom_factors = [t / s for t, s in zip(target_shape, img_aug.shape)]
+                    img_aug = zoom(img_aug, zoom_factors, order=1)
             
             data_aug.append(img_aug)
         
@@ -194,7 +208,14 @@ class ImageAugmenter(BaseEstimator, TransformerMixin):
                 f"images augmented ({n_augmented/len(data_x)*100:.1f}%)"
             )
         
-        return np.array(data_aug)
+        result = np.array(data_aug)
+        
+        # Final safety check
+        if result.shape != original_shape:
+            logger.warning(f"Shape mismatch detected. Forcing shape consistency.")
+            result = result.reshape(original_shape)
+        
+        return result
 
 
 class ImageRandomCropper(BaseEstimator, TransformerMixin):
