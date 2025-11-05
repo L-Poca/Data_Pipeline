@@ -1,18 +1,14 @@
 # Minimal requirements for running notebooks on Google Colab.
 # Before installing, clone the repo in Colab and cd into it:
-#   !git clone https://github.com/L-Poca/Data_Pipeline.git
-#   %cd Data_Pipeline
-# Then install:
-#   !pip install -r requirements_colab.txt
 #
 # These packages are necessary and sufficient for the imports and code used
 # in the notebooks (data loading, ML pipeline, deep learning, plotting).
-numpy>=1.23
-Pillow>=9.0
-scikit-learn>=1.0
-scipy>=1.14
-matplotlib>=3.5
-seaborn>=0.12
-pandas>=2.0
-tqdm>=4.60
-tensorflow>=2.18
+
+
+
+
+
+
+
+
+
