@@ -62,8 +62,16 @@ if ENV == "colab":
         subprocess.run(['git', 'clone', 'https://github.com/L-Poca/Data_Pipeline.git'], check=True)
     
     os.chdir('/content/Data_Pipeline')
-    subprocess.run(['git', 'checkout', 'origin/rafael_cleaning'], 
-                   capture_output=True, check=False)
+    
+    # Checkout de la branche rafael_cleaning
+    result = subprocess.run(
+        ['git', 'checkout', '-b', 'rafael_cleaning', 'origin/rafael_cleaning'],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        # Si la branche locale existe déjà, juste switcher
+        subprocess.run(['git', 'checkout', 'rafael_cleaning'], capture_output=True)
     
     print("📦 Installation des dépendances...")
     subprocess.run(['pip', 'install', '-r', 'requirements.txt', '--quiet'], check=True)
