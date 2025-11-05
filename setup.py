@@ -4,8 +4,22 @@ from setuptools import setup, find_packages
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+# Détecter si nous sommes sur Google Colab
+try:
+    import google.colab
+    IS_COLAB = True
+except ImportError:
+    IS_COLAB = False
+
+# Sur Colab, ne pas installer de dépendances (packages déjà présents)
+# Sur WSL/local, installer depuis requirements.txt
+if IS_COLAB:
+    requirements = []
+    print("🌐 Google Colab détecté - utilisation des packages natifs")
+else:
+    with open("requirements.txt", "r", encoding="utf-8") as fh:
+        requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+    print(f"💻 Installation locale - {len(requirements)} dépendances depuis requirements.txt")
 
 setup(
     name="data-pipeline",
