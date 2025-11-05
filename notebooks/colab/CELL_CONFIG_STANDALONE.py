@@ -112,13 +112,13 @@ else:  # local
     project_root = Path.cwd().parent.parent
 
 # Ajouter src/ au sys.path pour les imports
-src_path = str(project_root / 'src')
+# src_path = str(project_root / 'src')
 # if src_path not in sys.path:
 #     sys.path.insert(0, src_path)
 #     print(f"✅ Chemin src/ ajouté: {src_path}")
 
 # Charger la configuration depuis JSON
-from utils.config import build_config
+from src.utils.config import build_config
 
 config = build_config(project_root, ENV)
 
@@ -133,14 +133,14 @@ img_size = config.img_size
 # =============================================================================
 
 try:
-    from features.Pipelines.Transformateurs.image_loaders import ImageLoader
-    from features.Pipelines.Transformateurs.image_preprocessing import (
+    from src.features.Pipelines.Transformateurs.image_loaders import ImageLoader
+    from src.features.Pipelines.Transformateurs.image_preprocessing import (
         ImageResizer, ImageNormalizer, ImageFlattener
     )
-    from features.Pipelines.Transformateurs.image_augmentation import (
+    from src.features.Pipelines.Transformateurs.image_augmentation import (
         ImageAugmenter, ImageRandomCropper
     )
-    from features.Pipelines.Transformateurs.image_features import (
+    from src.features.Pipelines.Transformateurs.image_features import (
         ImageHistogram, ImagePCA, ImageStandardScaler
     )
     print("✅ Transformers importés")
@@ -157,16 +157,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
-
-try:
-    import tensorflow as tf
-    from tensorflow import keras
-    print(f"✅ TensorFlow {tf.__version__}")
-    TENSORFLOW_AVAILABLE = True
-except ImportError:
-    print("⚠️ TensorFlow non disponible")
-    TENSORFLOW_AVAILABLE = False
-
+import tensorflow as tf
+from tensorflow import keras
 
 # =============================================================================
 # CONFIGURATION MATPLOTLIB
@@ -198,7 +190,6 @@ print("   • data_dir: Dossier des données (Path)")
 print("   • categories: Liste des 4 classes")
 print("   • img_size: Taille des images (tuple)")
 print("   • ENV: Environnement actuel")
-print(f"   • TENSORFLOW_AVAILABLE: {TENSORFLOW_AVAILABLE}")
 print("\n🎯 Transformers disponibles:")
 print("   • ImageLoader, ImageResizer, ImageNormalizer, ImageFlattener")
 print("   • ImageAugmenter, ImageRandomCropper")
