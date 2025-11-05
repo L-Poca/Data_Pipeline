@@ -8,7 +8,7 @@ seaborn>=0.13.2
 tqdm>=4.67.1
 
 # Note: Si erreur numpy binary compatibility, ajouter:
-# numpy==1.26.4  # Décommenter uniquement si erreur "numpy.dtype size changed"
+numpy==1.26.4  # Décommenter uniquement si erreur "numpy.dtype size changed"
 
 
 
