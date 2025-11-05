@@ -56,13 +56,6 @@ print(f"🌍 Environnement: {ENV.upper()}")
 if ENV == "colab":
     print("\n🚀 Bootstrap Colab...")
     
-    # FIX: Réinstaller numpy pour éviter l'erreur de compatibilité binaire
-    print("🔧 Fix numpy binary compatibility...")
-    subprocess.run([
-        'pip', 'install', '--no-cache-dir', '--force-reinstall', 
-        'numpy==1.26.4'
-    ], check=True, capture_output=True)
-    
     os.chdir('/content')
     if not os.path.exists('/content/Data_Pipeline'):
         print("📥 Clonage du repository...")
@@ -80,10 +73,10 @@ if ENV == "colab":
         # Si la branche locale existe déjà, juste switcher
         subprocess.run(['git', 'checkout', 'rafael_cleaning'], capture_output=True)
     
-    print("📦 Installation des dépendances...")
-    subprocess.run([
-        'pip', 'install', '--no-cache-dir', '-r', 'requirements.txt', '--quiet'
-    ], check=True)
+    print("📦 Installation des dépendances manquantes...")
+    # Installer uniquement requirements_colab.txt qui contient les packages manquants
+    # Colab a déjà: numpy, pandas, matplotlib, scikit-learn, tensorflow
+    subprocess.run(['pip', 'install', '-r', 'requirements_colab.txt', '--quiet'], check=True)
     
     print("📦 Installation du package...")
     result = subprocess.run(['pip', 'install', '-e', '.', '--quiet'], capture_output=True, text=True)
