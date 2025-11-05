@@ -1,14 +1,13 @@
-# Minimal requirements for running notebooks on Google Colab.
-# Before installing, clone the repo in Colab and cd into it:
-#
-# Google Colab pre-installs: numpy, pandas, matplotlib, scikit-learn, tensorflow, scipy, pillow
-# On installe uniquement les packages manquants ou spécifiques:
+# Requirements for Google Colab (Python 3.12.12)
+# Colab Nov 2025 pre-installs: numpy 2.0.2, pandas 2.2.2, matplotlib 3.10.0, 
+# scikit-learn 1.6.1, scipy 1.16.3, tensorflow 2.19.0, seaborn 0.13.2, tqdm 4.67.1
 
-seaborn>=0.13.2
-tqdm>=4.67.1
+# CRITIQUE: Downgrade numpy 2.0.2 → 1.26.4 pour compatibilité code existant
+# Numpy 2.x a des breaking changes avec notre pipeline
+numpy==1.26.4
 
-# Note: Si erreur numpy binary compatibility, ajouter:
-numpy==1.26.4  # Décommenter uniquement si erreur "numpy.dtype size changed"
+# Tous les autres packages sont déjà installés en versions récentes
+# Pas besoin d'installer: pandas, matplotlib, scikit-learn, scipy, tensorflow, seaborn, tqdm, pillow
 
 
 

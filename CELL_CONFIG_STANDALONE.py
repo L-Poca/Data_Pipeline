@@ -72,11 +72,10 @@ if ENV == "colab":
     if result.returncode != 0:
         # Si la branche locale existe déjà, juste switcher
         subprocess.run(['git', 'checkout', 'rafael_cleaning'], capture_output=True)
-    
-    print("📦 Installation des dépendances manquantes...")
-    # Installer uniquement requirements_colab.txt qui contient les packages manquants
-    # Colab a déjà: numpy, pandas, matplotlib, scikit-learn, tensorflow
-    subprocess.run(['pip', 'install', '-r', 'requirements_colab.txt', '--quiet'], check=True)
+
+    print("📦 Downgrade de numpy vers 1.26.4...")
+
+    !pip install --no-cache-dir --force-reinstall numpy==1.26.4
     
     print("📦 Installation du package...")
     result = subprocess.run(['pip', 'install', '-e', '.', '--quiet'], capture_output=True, text=True)
