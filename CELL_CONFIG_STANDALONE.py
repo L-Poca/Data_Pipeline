@@ -73,13 +73,15 @@ if ENV == "colab":
         # Si la branche locale existe déjà, juste switcher
         subprocess.run(['git', 'checkout', 'rafael_cleaning'], capture_output=True)
     
-    # ✅ Utilisation des packages Colab natifs (NumPy 2.x, TensorFlow 2.19)
+    # ✅ setup.py détecte automatiquement Colab et n'installe AUCUNE dépendance
+    # Les packages natifs Colab sont utilisés (NumPy 2.0.2, TensorFlow 2.19.0, etc.)
     print("✅ Utilisation des packages Colab natifs:")
     print("   • NumPy 2.0.2")
     print("   • TensorFlow 2.19.0")
+    print("   • SciPy 1.16.3")
     print("   • scikit-learn 1.6.1")
     
-    # Installation du package en mode éditable
+    # Installation du package en mode éditable (sans dépendances - détection Colab dans setup.py)
     print("📦 Installation du package...")
     result = subprocess.run(['pip', 'install', '-e', '.', '--quiet'], capture_output=True, text=True)
     if result.returncode != 0:
