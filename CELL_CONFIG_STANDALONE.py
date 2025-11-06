@@ -187,8 +187,6 @@ print(f"🏷️ Classes: {', '.join(categories)}")
 print(f"🎛️ Images: {img_size}")
 print(f"🔧 Batch: {config.batch_size} | Époques: {config.epochs}")
 print(f"📐 Dataset accessible: {'✅' if data_dir.exists() else '❌'}")
-if not data_dir.exists():
-    print(f"   ⚠️ Créez le dossier ou placez les données dans: {data_dir}")
 print("=" * 70)
 print("\n💡 Variables disponibles:")
 print("   • config: Configuration complète (Config object)")
