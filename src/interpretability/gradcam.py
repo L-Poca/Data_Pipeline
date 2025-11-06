@@ -41,16 +41,37 @@ class GradCAM:
     
     def _find_last_conv_layer(self) -> str:
         """Trouve automatiquement la dernière couche convolutionnelle."""
+        # Parcourir les couches du modèle (ordre inversé)
         for layer in reversed(self.model.layers):
             if 'conv' in layer.name.lower():
                 return layer.name
+            
+            # Si c'est un modèle imbriqué (ex: InceptionV3 dans Sequential)
+            if hasattr(layer, 'layers'):
+                for sublayer in reversed(layer.layers):
+                    if 'conv' in sublayer.name.lower():
+                        return sublayer.name
+        
         raise ValueError("Aucune couche convolutionnelle trouvée dans le modèle")
     
     def _build_grad_model(self) -> keras.Model:
         """Construit le modèle de gradient."""
+        conv_layer = None
+        
+        # Chercher d'abord au niveau du modèle principal
         try:
             conv_layer = self.model.get_layer(self.layer_name)
         except ValueError:
+            # Chercher dans les sous-modèles (e.g., InceptionV3 dans Sequential)
+            for layer in self.model.layers:
+                if hasattr(layer, 'get_layer'):
+                    try:
+                        conv_layer = layer.get_layer(self.layer_name)
+                        break
+                    except ValueError:
+                        continue
+        
+        if conv_layer is None:
             raise ValueError(f"Couche '{self.layer_name}' non trouvée dans le modèle")
         
         return keras.Model(
