@@ -57,6 +57,7 @@ class GradCAM:
     def _build_grad_model(self) -> keras.Model:
         """Construit le modèle de gradient."""
         conv_layer = None
+        base_model = None
         
         # Chercher d'abord au niveau du modèle principal
         try:
@@ -67,6 +68,7 @@ class GradCAM:
                 if hasattr(layer, 'get_layer'):
                     try:
                         conv_layer = layer.get_layer(self.layer_name)
+                        base_model = layer  # Sauvegarder le modèle de base
                         break
                     except ValueError:
                         continue
@@ -74,8 +76,21 @@ class GradCAM:
         if conv_layer is None:
             raise ValueError(f"Couche '{self.layer_name}' non trouvée dans le modèle")
         
+        # Déterminer l'input à utiliser
+        # Si la couche est dans un sous-modèle, utiliser l'input du sous-modèle
+        if base_model is not None:
+            model_input = base_model.input
+        else:
+            # Sinon, utiliser l'input du modèle principal
+            # Pour Sequential, il faut d'abord appeler build() ou utiliser l'input de la première couche
+            if hasattr(self.model, 'input') and self.model.input is not None:
+                model_input = self.model.input
+            else:
+                # Utiliser l'input de la première couche (cas Sequential non appelé)
+                model_input = self.model.layers[0].input
+        
         return keras.Model(
-            inputs=self.model.input,
+            inputs=model_input,
             outputs=[conv_layer.output, self.model.output]
         )
     
