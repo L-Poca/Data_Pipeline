@@ -99,16 +99,15 @@ if ENV == "colab":
         print("📦 Extraction dataset...")
         os.makedirs('./data/raw/', exist_ok=True)
         subprocess.run(['unzip', '-o', '-q', archive_data, '-d', './data/raw/COVID-19_Radiography_Dataset/'])
-
     
     # Extraction models
 
-    # archive_models = '/content/drive/MyDrive/DS_COVID/archive_model.zip'
-    #     if os.path.exists(archive_models):
-    #         print("📦 Extraction models...")
-    #         os.makedirs('./models/', exist_ok=True)
-    #         subprocess.run(['unzip', '-o', '-q', archive_models, '-d', './models/'])
-    #         break
+    archive_models = '/content/drive/MyDrive/DS_COVID/inceptionv3_best.zip'
+    if os.path.exists(archive_models):
+        print("📦 Extraction models...")
+        os.makedirs('./models/', exist_ok=True)
+        subprocess.run(['unzip', '-o', '-q', archive_models, '-d', './models/'])
+
 
 
     print("✅ Bootstrap terminé")
