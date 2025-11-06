@@ -4,6 +4,8 @@
 
 This notebook (`custom_cnn_with_interpretability.ipynb`) provides a complete pipeline for training a custom deep CNN for COVID-19 radiography classification with comprehensive interpretability analysis using Grad-CAM, LIME, and SHAP.
 
+**Note**: This is a template notebook with unexecuted cells (`execution_count: null`). All cells will populate with execution numbers and outputs when you run them in Jupyter/Colab.
+
 ## Features
 
 ### ✅ Complete Data Pipeline
@@ -159,7 +161,10 @@ results/
 ## Expected Results
 
 ### Training Performance
-- **Training time**: 30-60 minutes on Colab Pro (T4 GPU)
+- **Training time**: 
+  - Colab Free (T4 GPU): 60-90 minutes
+  - Colab Pro (V100/A100 GPU): 20-40 minutes
+  - Local GPU (varies): 30-60 minutes
 - **Expected accuracy**: 85-95% on test set
 - **Convergence**: Usually within 20-30 epochs with early stopping
 
@@ -213,9 +218,17 @@ train_datagen = ImageDataGenerator(
 ## Troubleshooting
 
 ### Out of Memory (OOM)
-- **Reduce batch size**: Change `config.batch_size` in config
-- **Reduce model size**: Use fewer filters in conv layers
-- **Limit dataset**: Set `N_IMAGES_PER_CLASS = 500`
+- **Reduce batch size**: In the data augmentation cell (cell 13), modify:
+  ```python
+  # Change the batch_size when creating generators
+  train_generator = train_datagen.flow(
+      X_train, y_train_cat,
+      batch_size=16,  # Reduce from 32 to 16
+      shuffle=True
+  )
+  ```
+- **Reduce model size**: Use fewer filters in conv layers (cell 14)
+- **Limit dataset**: Set `N_IMAGES_PER_CLASS = 500` in cell 8
 
 ### Slow Training
 - **Enable GPU**: Ensure GPU is enabled in Colab
