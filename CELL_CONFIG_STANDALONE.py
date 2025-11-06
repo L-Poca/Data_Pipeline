@@ -73,14 +73,6 @@ if ENV == "colab":
         # Si la branche locale existe déjà, juste switcher
         subprocess.run(['git', 'checkout', 'rafael_cleaning'], capture_output=True)
     
-    # ✅ setup.py détecte automatiquement Colab et n'installe AUCUNE dépendance
-    # Les packages natifs Colab sont utilisés (NumPy 2.0.2, TensorFlow 2.19.0, etc.)
-    print("✅ Utilisation des packages Colab natifs:")
-    print("   • NumPy 2.0.2")
-    print("   • TensorFlow 2.19.0")
-    print("   • SciPy 1.16.3")
-    print("   • scikit-learn 1.6.1")
-    
     # Installation du package en mode éditable (sans dépendances - détection Colab dans setup.py)
     print("📦 Installation du package...")
     result = subprocess.run(['pip', 'install', '-e', '.', '--quiet'], capture_output=True, text=True)
@@ -150,7 +142,7 @@ img_size = config.img_size
 try:
     from src.features.Pipelines.Transformateurs.image_loaders import ImageLoader
     from src.features.Pipelines.Transformateurs.image_preprocessing import (
-        ImageResizer, ImageNormalizer, ImageFlattener
+        ImageResizer, ImageNormalizer, ImageFlattener, ImageMasker
     )
     from src.features.Pipelines.Transformateurs.image_augmentation import (
         ImageAugmenter, ImageRandomCropper
@@ -200,10 +192,6 @@ if not data_dir.exists():
 print("=" * 70)
 print("\n💡 Variables disponibles:")
 print("   • config: Configuration complète (Config object)")
-print("   • project_root: Racine du projet (Path)")
-print("   • data_dir: Dossier des données (Path)")
-print("   • categories: Liste des 4 classes")
-print("   • img_size: Taille des images (tuple)")
 print("   • ENV: Environnement actuel")
 print("\n🎯 Transformers disponibles:")
 print("   • ImageLoader, ImageResizer, ImageNormalizer, ImageFlattener")
