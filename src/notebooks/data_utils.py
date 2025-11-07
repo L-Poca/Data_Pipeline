@@ -22,11 +22,14 @@ from sklearn.utils.class_weight import compute_class_weight
 from sklearn.pipeline import Pipeline
 
 import keras
-from keras.preprocessing.image import ImageDataGenerator
 from keras.applications.vgg16 import preprocess_input as vgg16_preprocess
 from keras.applications.resnet50 import preprocess_input as resnet_preprocess
 from keras.applications.efficientnet import preprocess_input as effnet_preprocess
 from keras.applications.inception_v3 import preprocess_input as inception_preprocess
+
+# ImageDataGenerator is deprecated in Keras 3, use tf.keras version
+# pylint: disable=import-error,no-name-in-module
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 from src.features.Pipelines.Transformateurs.image_loaders import ImageLoader
 from src.features.Pipelines.Transformateurs.image_preprocessing import (

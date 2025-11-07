@@ -17,7 +17,10 @@ import numpy as np
 from sklearn.metrics import classification_report
 
 import keras
-from keras.preprocessing.image import ImageDataGenerator
+
+# ImageDataGenerator is deprecated in Keras 3, use tf.keras version
+# pylint: disable=import-error,no-name-in-module
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Configure logger
 logger = logging.getLogger(__name__)
