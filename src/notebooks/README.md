@@ -130,18 +130,25 @@ class_weights = compute_class_weights(
 Crée les générateurs Keras avec augmentation optionnelle.
 
 ```python
-train_gen, val_gen = create_data_generators(
+train_gen, val_gen, test_gen = create_data_generators(
     X_train=X_train,
     y_train_cat=y_train_cat,
     X_val=X_val,
     y_val_cat=y_val_cat,
+    X_test=X_test,           # Optionnel
+    y_test_cat=y_test_cat,   # Optionnel
     batch_size=32,
     augment_train=True,  # Augmentation sur train uniquement
     verbose=True
 )
 ```
 
-**Augmentation appliquée:**
+**Returns:**
+- `train_gen`: Générateur d'entraînement (avec augmentation si `augment_train=True`)
+- `val_gen`: Générateur de validation (sans augmentation)
+- `test_gen`: Générateur de test (sans augmentation, `None` si X_test non fourni)
+
+**Augmentation appliquée (train uniquement):**
 - Rotation: ±10°
 - Shift: ±10%
 - Zoom: ±10%
@@ -363,8 +370,8 @@ y_test = np.argmax(y_test_cat, axis=1)
 
 # 5. Class weights et generators
 class_weights = compute_class_weights(y_train, config.classes)
-train_gen, val_gen = create_data_generators(
-    X_train, y_train_cat, X_val, y_val_cat, batch_size=32
+train_gen, val_gen, test_gen = create_data_generators(
+    X_train, y_train_cat, X_val, y_val_cat, X_test, y_test_cat, batch_size=32
 )
 
 # 6. Modèle

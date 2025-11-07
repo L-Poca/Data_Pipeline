@@ -264,10 +264,12 @@ def create_data_generators(
     y_train_cat: np.ndarray,
     X_val: np.ndarray,
     y_val_cat: np.ndarray,
+    X_test: Optional[np.ndarray] = None,
+    y_test_cat: Optional[np.ndarray] = None,
     batch_size: int = 32,
     augment_train: bool = True,
     verbose: bool = True
-) -> Tuple[Any, Any]:
+) -> Tuple[Any, Any, Optional[Any]]:
     """
     Create Keras data generators with optional augmentation.
     
@@ -276,18 +278,22 @@ def create_data_generators(
         y_train_cat: Training labels (one-hot)
         X_val: Validation images
         y_val_cat: Validation labels (one-hot)
+        X_test: Test images (optional)
+        y_test_cat: Test labels (one-hot, optional)
         batch_size: Batch size
-        augment_train: Apply data augmentation to training set
+        augment_train: Apply augmentation to training data
         verbose: Print generator information
     
     Returns:
-        Tuple of (train_generator, val_generator)
+        Tuple of (train_generator, val_generator, test_generator)
+        test_generator is None if X_test not provided
     """
     if verbose:
         print("=" * 70)
         print("DATA AUGMENTATION")
         print("=" * 70)
     
+    # Training generator with augmentation
     if augment_train:
         train_datagen = ImageDataGenerator(
             rotation_range=10,
@@ -297,7 +303,6 @@ def create_data_generators(
             zoom_range=0.1,
             fill_mode='nearest'
         )
-        
         if verbose:
             print("\n✅ Data augmentation configurée:")
             print("  • Rotation: ±10°")
@@ -307,9 +312,11 @@ def create_data_generators(
     else:
         train_datagen = ImageDataGenerator()
         if verbose:
-            print("\n⚠️ Pas d'augmentation pour le training")
+            print("\n⚠️ Pas d'augmentation sur le training set")
     
+    # Validation and test generators (no augmentation)
     val_datagen = ImageDataGenerator()
+    test_datagen = ImageDataGenerator()
     
     if verbose:
         print("\n📊 Création des générateurs...")
@@ -326,11 +333,21 @@ def create_data_generators(
         shuffle=False
     )
     
+    test_generator = None
+    if X_test is not None and y_test_cat is not None:
+        test_generator = test_datagen.flow(
+            X_test, y_test_cat,
+            batch_size=batch_size,
+            shuffle=False
+        )
+    
     if verbose:
         print(f"  Train: {len(train_generator)} batches de {batch_size}")
         print(f"  Val:   {len(val_generator)} batches de {batch_size}")
+        if test_generator:
+            print(f"  Test:  {len(test_generator)} batches de {batch_size}")
     
-    return train_generator, val_generator
+    return train_generator, val_generator, test_generator
 
 
 # =============================================================================
