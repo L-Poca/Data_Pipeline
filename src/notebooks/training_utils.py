@@ -168,7 +168,7 @@ def evaluate_model(
     metric_names = model.metrics_names
 
     # Create results dictionary
-    results = {name: value for name, value in zip(metric_names, test_results)}
+    results = dict(zip(metric_names, test_results))
 
     if verbose:
         print("\n" + "=" * 70)

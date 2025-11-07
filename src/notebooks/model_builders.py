@@ -219,10 +219,10 @@ def build_transfer_learning_model(
     )
 
     if verbose:
-        trainable_params = sum([tf.size(w).numpy() for w in model.trainable_weights])
-        total_params = sum([tf.size(w).numpy() for w in model.weights])
+        trainable_params = sum(tf.size(w).numpy() for w in model.trainable_weights)
+        total_params = sum(tf.size(w).numpy() for w in model.weights)
 
-        print("\n✅ Modèle créé")
+        print(f"\n✅ Modèle créé")
         print(f"   Base model: {base_model_name}")
         print(f"   Input shape: {input_shape}")
         print(f"   Output classes: {num_classes}")
@@ -268,10 +268,10 @@ def unfreeze_top_layers(
         layer.trainable = False
 
     if verbose:
-        trainable_count = sum([1 for l in base_model.layers if l.trainable])
-        frozen_count = sum([1 for l in base_model.layers if not l.trainable])
+        trainable_count = sum(1 for layer in base_model.layers if layer.trainable)
+        frozen_count = sum(1 for layer in base_model.layers if not layer.trainable)
 
-        print("\n📊 Base model layers:")
+        print(f"\n📊 Base model layers:")
         print(f"   Trainable: {trainable_count}")
         print(f"   Frozen:    {frozen_count}")
 
@@ -287,10 +287,10 @@ def unfreeze_top_layers(
     )
 
     if verbose:
-        trainable_params = sum([tf.size(w).numpy() for w in model.trainable_weights])
-        total_params = sum([tf.size(w).numpy() for w in model.weights])
+        trainable_params = sum(tf.size(w).numpy() for w in model.trainable_weights)
+        total_params = sum(tf.size(w).numpy() for w in model.weights)
 
-        print("\n📊 Paramètres après unfreeze:")
+        print(f"\n📊 Paramètres après unfreeze:")
         print(f"   Trainable: {trainable_params:,}")
         print(f"   Total:     {total_params:,}")
         print(f"   Ratio:     {trainable_params / total_params:.1%}")

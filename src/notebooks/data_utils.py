@@ -63,7 +63,7 @@ def load_dataset(
         cat_path = data_dir / cat / "images"
 
         if not cat_path.exists():
-            logger.warning(f"Category path not found: {cat_path}")
+            logger.warning("Category path not found: %s", cat_path)
             continue
 
         imgs = sorted(list(cat_path.glob("*.png")))
@@ -244,7 +244,7 @@ def compute_class_weights(
         class_weight="balanced", classes=np.unique(y_train), y=y_train
     )
 
-    class_weights = {i: weight for i, weight in enumerate(class_weights_array)}
+    class_weights = dict(enumerate(class_weights_array))
 
     if verbose:
         print("\nPoids de classe:")

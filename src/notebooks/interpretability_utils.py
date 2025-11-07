@@ -213,7 +213,6 @@ def run_gradcam_analysis(
     descriptions: List[str],
     class_names: List[str],
     y_pred_probs: Optional[np.ndarray] = None,
-    figsize: Tuple[int, int] = (15, 4),
     save_dir: Optional[Path] = None,
 ) -> None:
     """
@@ -226,7 +225,6 @@ def run_gradcam_analysis(
         descriptions: Description for each sample
         class_names: List of class names
         y_pred_probs: Predicted probabilities (optional)
-        figsize: Figure size per sample
         save_dir: Directory to save figures (optional)
     """
     print("=" * 70)

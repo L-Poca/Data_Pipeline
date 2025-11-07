@@ -72,7 +72,7 @@ def plot_training_curves(
     # Plot Loss + 3 metrics
     metrics_to_plot = ["loss"] + [m for m in available_metrics if m != "loss"][:3]
 
-    fig, axes = plt.subplots(1, len(metrics_to_plot), figsize=figsize)
+    _, axes = plt.subplots(1, len(metrics_to_plot), figsize=figsize)
 
     if len(metrics_to_plot) == 1:
         axes = [axes]
