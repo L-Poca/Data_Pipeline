@@ -93,14 +93,11 @@ if ENV == "colab":
         subprocess.run(['unzip', '-o', '-q', archive_data, '-d', './data/raw/COVID-19_Radiography_Dataset/'])
     
     # Extraction models
-
     archive_models = '/content/drive/MyDrive/DS_COVID/inceptionv3_best.zip'
     if os.path.exists(archive_models):
         print("📦 Extraction models...")
         os.makedirs('./models/', exist_ok=True)
         subprocess.run(['unzip', '-o', '-q', archive_models, '-d', './models/'])
-
-
 
     print("✅ Bootstrap terminé")
 
@@ -117,6 +114,17 @@ elif ENV == "wsl":
 else:  # local
     # Depuis un notebook dans src/notebooks/
     project_root = Path.cwd().parent.parent
+
+# Vérification du modèle en local (WSL ou autre)
+if ENV != "colab":
+    models_dir = project_root / 'models'
+    model_path = models_dir / 'inceptionv3_best.keras'
+    
+    if model_path.exists():
+        print(f"✅ Modèle InceptionV3 trouvé: {model_path}")
+    else:
+        print(f"⚠️ Modèle InceptionV3 non trouvé: {model_path}")
+        print(f"   Veuillez placer inceptionv3_best.keras dans {models_dir}/")
 
 # Ajouter src/ au sys.path pour les imports
 # src_path = str(project_root / 'src')
