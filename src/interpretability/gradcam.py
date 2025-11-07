@@ -43,12 +43,19 @@ class GradCAM:
         """Trouve automatiquement la dernière couche convolutionnelle."""
         # Parcourir les couches du modèle (ordre inversé)
         for layer in reversed(self.model.layers):
+            # Vérifier si c'est une Conv2D par type
+            if isinstance(layer, keras.layers.Conv2D):
+                return layer.name
+            
+            # Vérifier par nom (fallback)
             if 'conv' in layer.name.lower():
                 return layer.name
             
             # Si c'est un modèle imbriqué (ex: InceptionV3 dans Sequential)
             if hasattr(layer, 'layers'):
                 for sublayer in reversed(layer.layers):
+                    if isinstance(sublayer, keras.layers.Conv2D):
+                        return sublayer.name
                     if 'conv' in sublayer.name.lower():
                         return sublayer.name
         
@@ -76,23 +83,83 @@ class GradCAM:
         if conv_layer is None:
             raise ValueError(f"Couche '{self.layer_name}' non trouvée dans le modèle")
         
-        # Déterminer l'input à utiliser
-        # Si la couche est dans un sous-modèle, utiliser l'input du sous-modèle
-        if base_model is not None:
-            model_input = base_model.input
-        else:
-            # Sinon, utiliser l'input du modèle principal
-            # Pour Sequential, il faut d'abord appeler build() ou utiliser l'input de la première couche
-            if hasattr(self.model, 'input') and self.model.input is not None:
-                model_input = self.model.input
+        # ✅ CORRECTION: Gérer correctement les modèles Sequential
+        if isinstance(self.model, keras.Sequential):
+            # Pour Sequential, créer un nouveau modèle fonctionnel
+            # Obtenir l'input shape de la première couche (SANS accéder à .input ou .input_shape du modèle)
+            first_layer = self.model.layers[0]
+            
+            # Si la première couche a un input_shape défini (cas de Conv2D avec input_shape)
+            if hasattr(first_layer, 'input_shape') and first_layer.input_shape is not None:
+                input_shape = first_layer.input_shape[1:]  # Enlever batch dimension
+            elif hasattr(first_layer, 'batch_input_shape'):
+                input_shape = first_layer.batch_input_shape[1:]
             else:
-                # Utiliser l'input de la première couche (cas Sequential non appelé)
-                model_input = self.model.layers[0].input
+                # Essayer de construire le modèle pour obtenir l'input shape
+                self.model.build()
+                input_shape = self.model.input_shape[1:]
+            
+            # Créer l'input explicite
+            model_input = keras.Input(shape=input_shape)
+            
+            # CAS 1: La couche conv est dans un sous-modèle (e.g., InceptionV3 dans Sequential)
+            if base_model is not None and conv_layer is not None:
+                # Créer un modèle qui extrait à la fois la conv layer et la sortie du base_model
+                intermediate_model = keras.Model(
+                    inputs=base_model.input,
+                    outputs=[conv_layer.output, base_model.output]
+                )
+                
+                # Reconstruire le forward pass complet
+                x = model_input
+                conv_output = None
+                
+                for layer in self.model.layers:
+                    if layer == base_model:
+                        # Extraire les deux sorties du base_model
+                        conv_output, base_out = intermediate_model(x)
+                        x = base_out
+                    else:
+                        x = layer(x)
+                
+                final_output = x
+                
+                return keras.Model(
+                    inputs=model_input,
+                    outputs=[conv_output, final_output]
+                )
+            
+            # CAS 2: La couche conv est directement dans le Sequential
+            else:
+                x = model_input
+                conv_output = None
+                
+                for layer in self.model.layers:
+                    x = layer(x)
+                    if layer.name == self.layer_name:
+                        conv_output = x
+                
+                final_output = x  # Sortie finale du modèle
+                
+                if conv_output is None:
+                    raise ValueError(f"Couche '{self.layer_name}' non atteinte dans le forward pass")
+                
+                return keras.Model(
+                    inputs=model_input,
+                    outputs=[conv_output, final_output]
+                )
         
-        return keras.Model(
-            inputs=model_input,
-            outputs=[conv_layer.output, self.model.output]
-        )
+        else:
+            # Pour les modèles fonctionnels ou avec sous-modèles
+            if base_model is not None:
+                model_input = base_model.input
+            else:
+                model_input = self.model.input
+            
+            return keras.Model(
+                inputs=model_input,
+                outputs=[conv_layer.output, self.model.output]
+            )
     
     def compute_heatmap(
         self,
@@ -180,9 +247,23 @@ class GradCAM:
     def get_available_layers(self) -> List[str]:
         """Retourne la liste des couches convolutionnelles disponibles."""
         conv_layers = []
+        
         for layer in self.model.layers:
-            if 'conv' in layer.name.lower():
+            # Vérifier si c'est une Conv2D par type
+            if isinstance(layer, keras.layers.Conv2D):
                 conv_layers.append(layer.name)
+            # Vérifier par nom (fallback)
+            elif 'conv' in layer.name.lower():
+                conv_layers.append(layer.name)
+            
+            # Si c'est un modèle imbriqué (ex: InceptionV3 dans Sequential)
+            if hasattr(layer, 'layers'):
+                for sublayer in layer.layers:
+                    if isinstance(sublayer, keras.layers.Conv2D):
+                        conv_layers.append(sublayer.name)
+                    elif 'conv' in sublayer.name.lower():
+                        conv_layers.append(sublayer.name)
+        
         return conv_layers
 
 
