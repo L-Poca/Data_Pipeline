@@ -52,6 +52,7 @@ from .interpretability_utils import (
     setup_interpretability,
     run_gradcam_analysis,
     select_sample_images,
+    get_preprocessing_function,
 )
 
 __all__ = [
@@ -78,4 +79,5 @@ __all__ = [
     "setup_interpretability",
     "run_gradcam_analysis",
     "select_sample_images",
+    "get_preprocessing_function",
 ]
