@@ -169,7 +169,20 @@ def evaluate_model(
         test_generator.reset()
         y_pred_probs = model.predict(test_generator, verbose=0)
         y_pred = np.argmax(y_pred_probs, axis=1)
-        y_true = test_generator.classes
+        
+        # Extract y_true from generator
+        # DirectoryIterator has .classes, NumpyArrayIterator doesn't
+        if hasattr(test_generator, 'classes'):
+            y_true = test_generator.classes
+        else:
+            # For NumpyArrayIterator, extract labels from batches
+            test_generator.reset()
+            y_true_cat = []
+            for i in range(len(test_generator)):
+                _, y_batch = test_generator[i]
+                y_true_cat.append(y_batch)
+            y_true_cat = np.concatenate(y_true_cat, axis=0)
+            y_true = np.argmax(y_true_cat, axis=1)
 
     # Get metric names
     metric_names = model.metrics_names
