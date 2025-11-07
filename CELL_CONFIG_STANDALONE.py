@@ -8,17 +8,35 @@ INSTRUCTIONS:
 1. Copiez TOUT le contenu de cette cellule
 2. Collez-le comme PREMIÈRE CELLULE de votre notebook
 3. Exécutez la cellule
-4. Les variables sont prêtes à l'emploi !
+4. La configuration est prête à l'emploi !
 
 Cette cellule est 100% autonome et fonctionne partout :
 ✅ Google Colab (clone + installe automatiquement)
 ✅ WSL / Linux Local
 ✅ Tout environnement Jupyter
 
-APRÈS EXÉCUTION, VOUS POUVEZ UTILISER:
-- config: Objet de configuration (config.batch_size, config.data_dir, etc.)
-- ENV: Environnement détecté ('colab', 'wsl', 'local')
-- Tous les imports des transformers
+APRÈS EXÉCUTION, UTILISEZ L'OBJET 'config':
+--------------------------------------------
+▶ config.data_dir              # Chemin du dataset
+▶ config.models_dir            # Répertoire des modèles
+▶ config.results_dir           # Répertoire des résultats
+▶ config.classes               # Liste des classes
+▶ config.img_size              # Tuple (width, height)
+▶ config.img_channels          # Nombre de canaux (1=grayscale, 3=RGB)
+▶ config.batch_size            # Taille des batchs
+▶ config.epochs                # Nombre d'époques
+▶ config.learning_rate         # Learning rate
+▶ config.validation_split      # Proportion pour validation
+▶ config.gradcam_alpha         # Alpha pour Grad-CAM
+▶ config.shap_max_evals        # Evaluations SHAP
+▶ config.confidence_high_threshold  # Seuil confiance haute
+... et bien plus !
+
+VARIABLES GLOBALES:
+-------------------
+• config: Objet Config complet (tous les paramètres du projet)
+• ENV: Environnement détecté ('colab', 'wsl', 'local')
+• Tous les transformers importés et prêts à l'emploi
 
 """
 
@@ -137,10 +155,7 @@ from src.utils.config import build_config
 
 config = build_config(project_root, ENV)
 
-# Exports pour compatibilité avec anciens notebooks
-data_dir = config.data_dir
-categories = config.classes
-img_size = config.img_size
+print(f"\n🎯 Configuration chargée depuis config/{ENV}_config.json")
 
 
 # =============================================================================
@@ -176,31 +191,52 @@ import tensorflow as tf
 from tensorflow import keras
 
 # =============================================================================
-# CONFIGURATION MATPLOTLIB
+# CONFIGURATION MATPLOTLIB (utilise config pour les paramètres)
 # =============================================================================
 
-plt.rcParams['figure.figsize'] = (15, 10)
-sns.set_style('whitegrid')
+plt.rcParams['figure.figsize'] = config.figure_size
+plt.rcParams['figure.dpi'] = config.dpi
+plt.style.use(config.plot_style)
+sns.set_palette(config.color_palette)
 
 # =============================================================================
 # AFFICHAGE DU RÉSUMÉ
 # =============================================================================
 
-print("\n" + "=" * 70)
+print("\n" + "=" * 80)
 print("✅ CONFIGURATION PRÊTE - Data Pipeline")
-print("=" * 70)
-print(f"📂 Projet: {project_root}")
-print(f"📊 Dataset: {data_dir}")
-print(f"🏷️ Classes: {', '.join(categories)}")
-print(f"🎛️ Images: {img_size}")
-print(f"🔧 Batch: {config.batch_size} | Époques: {config.epochs}")
-print(f"📐 Dataset accessible: {'✅' if data_dir.exists() else '❌'}")
-print("=" * 70)
-print("\n💡 Variables disponibles:")
-print("   • config: Configuration complète (Config object)")
+print("=" * 80)
+print(f"📂 Projet:       {config.project_root}")
+print(f"📊 Dataset:      {config.data_dir}")
+print(f"💾 Modèles:      {config.models_dir}")
+print(f"📈 Résultats:    {config.results_dir}")
+print(f"📐 Dataset:      {'✅ Accessible' if config.data_dir.exists() else '❌ Introuvable'}")
+print()
+print(f"🏷️  Classes:     {', '.join(config.classes)} ({config.num_classes} classes)")
+print(f"🎛️  Images:      {config.img_size} | {config.img_channels} canaux")
+print(f"🔧 Training:     Batch={config.batch_size} | Epochs={config.epochs} | LR={config.learning_rate}")
+print(f"� Splits:       Train/Val={1-config.validation_split:.0%} | Val={config.validation_split:.0%} | Test={config.test_split:.0%}")
+print()
+print(f"🎨 Viz:          Style={config.plot_style} | Palette={config.color_palette}")
+print(f"📏 Figures:      {config.figure_size} @ {config.dpi} DPI")
+print()
+print(f"🔍 Interprét.:   GradCAM α={config.gradcam_alpha} | SHAP evals={config.shap_max_evals}")
+print(f"📉 Seuils conf.: High={config.confidence_high_threshold} | Medium={config.confidence_medium_threshold}")
+print("=" * 80)
+print("\n💡 Variable principale:")
+print("   • config: Objet Config complet (accès à TOUS les paramètres)")
 print("   • ENV: Environnement actuel")
-print("\n🎯 Transformers disponibles:")
-print("   • ImageLoader, ImageResizer, ImageNormalizer, ImageFlattener")
+print()
+print("📚 Exemples d'utilisation:")
+print("   config.data_dir          # Chemin du dataset")
+print("   config.classes           # Liste des classes")
+print("   config.img_size          # Tuple (width, height)")
+print("   config.batch_size        # Taille des batchs")
+print("   config.models_dir        # Répertoire des modèles")
+print("   config.gradcam_alpha     # Paramètres d'interprétabilité")
+print()
+print("🎯 Transformers disponibles:")
+print("   • ImageLoader, ImageResizer, ImageNormalizer, ImageFlattener, ImageMasker")
 print("   • ImageAugmenter, ImageRandomCropper")
 print("   • ImageHistogram, ImagePCA, ImageStandardScaler")
-print("=" * 70)
+print("=" * 80)

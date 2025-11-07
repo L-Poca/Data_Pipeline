@@ -10,8 +10,10 @@ Author: Data Pipeline Team
 Date: November 2025
 """
 
+from datetime import datetime
 import logging
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from sklearn.metrics import classification_report
@@ -217,3 +219,157 @@ def evaluate_model(
         print("\n✅ Évaluation terminée!")
 
     return results
+
+
+
+
+# =============================================================================
+# RUN METADATA TRACKING
+# =============================================================================
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def save_run_metadata(
+    model_path: Path,
+    config: Dict[str, Any],
+    history: Optional[keras.callbacks.History] = None,
+    metrics: Optional[Dict[str, float]] = None,
+    model_architecture: Optional[str] = None,
+    additional_info: Optional[Dict[str, Any]] = None,
+) -> Path:
+    """
+    Save run metadata alongside the trained model for traceability.
+
+    Creates a JSON file with training configuration, hyperparameters,
+    final metrics, and any additional information for reproducibility.
+
+    Args:
+        model_path: Path where the model was saved (e.g., 'models/inceptionv3_best.keras')
+        config: Configuration dict with hyperparameters
+        history: Training history from model.fit()
+        metrics: Final evaluation metrics (accuracy, loss, etc.)
+        model_architecture: Name of model architecture (e.g., 'InceptionV3', 'CustomCNN')
+        additional_info: Any additional metadata to save
+
+    Returns:
+        Path to saved metadata JSON file
+
+    Example:
+        >>> save_run_metadata(
+        ...     model_path=Path("models/inceptionv3_best.keras"),
+        ...     config={"batch_size": 32, "epochs": 50},
+        ...     history=history,
+        ...     metrics={"test_accuracy": 0.95},
+        ...     model_architecture="InceptionV3"
+        ... )
+    """
+    print("=" * 70)
+    print("SAUVEGARDE MÉTADONNÉES RUN")
+    print("=" * 70)
+
+    # Create metadata dict
+    metadata = {
+        "timestamp": datetime.now().isoformat(),
+        "model_path": str(model_path),
+        "model_architecture": model_architecture or "Unknown",
+    }
+
+    # Add configuration
+    if config:
+        # Convert Path objects to strings for JSON serialization
+        config_serializable = {}
+        for key, value in config.items():
+            if isinstance(value, Path):
+                config_serializable[key] = str(value)
+            elif isinstance(value, (list, tuple)) and value and isinstance(value[0], Path):
+                config_serializable[key] = [str(v) for v in value]
+            else:
+                config_serializable[key] = value
+
+        metadata["config"] = config_serializable
+
+    # Add training history (final values)
+    if history is not None:
+        metadata["training_history"] = {
+            "final_epoch": len(history.history["loss"]),
+            "total_epochs_trained": len(history.history["loss"]),
+            "final_metrics": {
+                key: float(values[-1]) for key, values in history.history.items()
+            },
+        }
+
+    # Add evaluation metrics
+    if metrics:
+        metadata["evaluation_metrics"] = {
+            key: float(value) if isinstance(value, (int, float, np.number)) else str(value)
+            for key, value in metrics.items()
+            if not isinstance(value, np.ndarray)  # Skip arrays
+        }
+
+    # Add additional info
+    if additional_info:
+        metadata["additional_info"] = additional_info
+
+    # Save to JSON file next to model
+    metadata_path = model_path.parent / f"{model_path.stem}_metadata.json"
+
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+    print(f"\n✅ Métadonnées sauvegardées: {metadata_path}")
+    print(f"   Model: {model_architecture}")
+    print(f"   Timestamp: {metadata['timestamp']}")
+
+    if metrics:
+        print("\n📊 Métriques finales:")
+        for key, value in metrics.items():
+            if not isinstance(value, np.ndarray):
+                print(f"   {key}: {value}")
+
+    return metadata_path
+
+
+def load_run_metadata(model_path: Path) -> Dict[str, Any]:
+    """
+    Load run metadata from JSON file.
+
+    Args:
+        model_path: Path to the model file
+
+    Returns:
+        Dictionary with run metadata
+
+    Raises:
+        FileNotFoundError: If metadata file doesn't exist
+
+    Example:
+        >>> metadata = load_run_metadata(Path("models/inceptionv3_best.keras"))
+        >>> print(metadata['config']['batch_size'])
+        32
+    """
+    metadata_path = model_path.parent / f"{model_path.stem}_metadata.json"
+
+    if not metadata_path.exists():
+        raise FileNotFoundError(f"Métadonnées introuvables: {metadata_path}")
+
+    with open(metadata_path, "r", encoding="utf-8") as f:
+        metadata = json.load(f)
+
+    print("=" * 70)
+    print("CHARGEMENT MÉTADONNÉES")
+    print("=" * 70)
+    print(f"\n📂 Chargement: {metadata_path}")
+    print(f"   Model: {metadata.get('model_architecture', 'Unknown')}")
+    print(f"   Timestamp: {metadata.get('timestamp', 'Unknown')}")
+
+    if "evaluation_metrics" in metadata:
+        print("\n📊 Métriques:")
+        for key, value in metadata["evaluation_metrics"].items():
+            print(f"   {key}: {value}")
+
+    if "config" in metadata:
+        print("\n⚙️  Configuration:")
+        for key, value in metadata["config"].items():
+            print(f"   {key}: {value}")
+
+    return metadata

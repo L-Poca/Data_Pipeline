@@ -26,6 +26,295 @@ logger = logging.getLogger(__name__)
 plt.style.use("seaborn-v0_8-darkgrid")
 sns.set_palette("husl")
 
+# =============================================================================
+# IMAGE VISUALIZATION
+# =============================================================================
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+def visualize_images(
+    images: np.ndarray,
+    labels: Optional[List[str]] = None,
+    n_samples: int = 12,
+    n_cols: int = 4,
+    figsize: tuple = (15, 12),
+    title: str = "Images Préprocessées",
+    save_path: Optional[str] = None,
+    random_seed: int = 42,
+) -> None:
+    """
+    Visualize a grid of preprocessed images.
+
+    Args:
+        images: Array of images (N, H, W, C) or (N, H, W)
+        labels: Optional list of labels for each image
+        n_samples: Number of samples to display
+        n_cols: Number of columns in the grid
+        figsize: Figure size (width, height)
+        title: Figure title
+        save_path: Path to save figure (optional)
+        random_seed: Random seed for sample selection
+    """
+    print("=" * 70)
+    print("VISUALISATION D'IMAGES")
+    print("=" * 70)
+
+    np.random.seed(random_seed)
+    n_images = len(images)
+    n_samples = min(n_samples, n_images)
+
+    # Select random samples
+    indices = np.random.choice(n_images, size=n_samples, replace=False)
+
+    # Calculate grid dimensions
+    n_rows = (n_samples + n_cols - 1) // n_cols
+
+    # Create figure
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
+    axes = axes.flatten() if n_samples > 1 else [axes]
+
+    print(f"\n📊 Affichage de {n_samples} images")
+    print(f"   Shape: {images.shape}")
+    print(f"   Range: [{images.min():.3f}, {images.max():.3f}]")
+
+    for i, idx in enumerate(indices):
+        img = images[idx]
+
+        # Normalize image for display if needed
+        if img.max() > 1:
+            img_display = img / 255.0
+        else:
+            img_display = img.copy()
+
+        # Handle grayscale
+        if len(img.shape) == 2 or img.shape[-1] == 1:
+            axes[i].imshow(img_display.squeeze(), cmap="gray")
+        else:
+            axes[i].imshow(img_display)
+
+        # Add label if provided
+        if labels is not None:
+            axes[i].set_title(f"{labels[idx]}", fontsize=10, fontweight="bold")
+        else:
+            axes[i].set_title(f"Image {idx}", fontsize=10)
+
+        axes[i].axis("off")
+
+    # Hide unused subplots
+    for i in range(n_samples, len(axes)):
+        axes[i].axis("off")
+
+    plt.suptitle(title, fontsize=16, fontweight="bold", y=0.98)
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"\n💾 Figure sauvegardée: {save_path}")
+
+    plt.show()
+    print("\n✅ Images affichées!")
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+def visualize_masked_images(
+    images: np.ndarray,
+    masks: np.ndarray,
+    labels: Optional[List[str]] = None,
+    n_samples: int = 6,
+    n_cols: int = 3,
+    figsize: tuple = (15, 10),
+    save_path: Optional[str] = None,
+    random_seed: int = 42,
+) -> None:
+    """
+    Visualize original images alongside their masks and masked versions.
+
+    Args:
+        images: Array of original images (N, H, W, C) or (N, H, W)
+        masks: Array of binary masks (N, H, W) or (N, H, W, 1)
+        labels: Optional list of labels for each image
+        n_samples: Number of samples to display
+        n_cols: Number of columns (each row shows: original, mask, masked)
+        figsize: Figure size (width, height)
+        save_path: Path to save figure (optional)
+        random_seed: Random seed for sample selection
+    """
+    print("=" * 70)
+    print("VISUALISATION IMAGES MASQUÉES")
+    print("=" * 70)
+
+    np.random.seed(random_seed)
+    n_images = len(images)
+    n_samples = min(n_samples, n_images)
+
+    # Select random samples
+    indices = np.random.choice(n_images, size=n_samples, replace=False)
+
+    # Create figure - 3 columns per sample (original, mask, masked)
+    n_rows = n_samples
+    fig, axes = plt.subplots(n_rows, 3, figsize=figsize)
+
+    # Ensure axes is 2D
+    if n_samples == 1:
+        axes = axes.reshape(1, -1)
+
+    print(f"\n📊 Affichage de {n_samples} images avec masques")
+    print(f"   Images shape: {images.shape}")
+    print(f"   Masks shape: {masks.shape}")
+
+    for i, idx in enumerate(indices):
+        img = images[idx]
+        mask = masks[idx]
+
+        # Normalize for display
+        if img.max() > 1:
+            img_display = img / 255.0
+        else:
+            img_display = img.copy()
+
+        # Ensure mask is 2D
+        if len(mask.shape) == 3 and mask.shape[-1] == 1:
+            mask = mask.squeeze()
+
+        # Create masked version
+        if len(img.shape) == 3 and img.shape[-1] == 3:
+            masked_img = img_display * mask[..., np.newaxis]
+        else:
+            masked_img = img_display * mask
+
+        # Plot original
+        if len(img.shape) == 2 or img.shape[-1] == 1:
+            axes[i, 0].imshow(img_display.squeeze(), cmap="gray")
+        else:
+            axes[i, 0].imshow(img_display)
+        axes[i, 0].set_title("Original", fontsize=10, fontweight="bold")
+        axes[i, 0].axis("off")
+
+        # Plot mask
+        axes[i, 1].imshow(mask, cmap="gray")
+        axes[i, 1].set_title("Mask", fontsize=10, fontweight="bold")
+        axes[i, 1].axis("off")
+
+        # Plot masked
+        if len(img.shape) == 2 or img.shape[-1] == 1:
+            axes[i, 2].imshow(masked_img.squeeze(), cmap="gray")
+        else:
+            axes[i, 2].imshow(masked_img)
+        axes[i, 2].set_title("Masked", fontsize=10, fontweight="bold")
+        axes[i, 2].axis("off")
+
+        # Add label as ylabel
+        if labels is not None:
+            axes[i, 0].set_ylabel(
+                f"{labels[idx]}", fontsize=11, fontweight="bold", rotation=0, ha="right"
+            )
+
+    plt.suptitle(
+        "Comparaison: Original vs Mask vs Masked", fontsize=16, fontweight="bold", y=0.995
+    )
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"\n💾 Figure sauvegardée: {save_path}")
+
+    plt.show()
+    print("\n✅ Images masquées affichées!")
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+def compare_preprocessing_steps(
+    images_raw: np.ndarray,
+    images_preprocessed: np.ndarray,
+    labels: Optional[List[str]] = None,
+    n_samples: int = 4,
+    figsize: tuple = (12, 10),
+    save_path: Optional[str] = None,
+    random_seed: int = 42,
+) -> None:
+    """
+    Compare images before and after preprocessing side-by-side.
+
+    Args:
+        images_raw: Array of raw images (N, H, W, C)
+        images_preprocessed: Array of preprocessed images (N, H, W, C)
+        labels: Optional list of labels
+        n_samples: Number of samples to display
+        figsize: Figure size (width, height)
+        save_path: Path to save figure (optional)
+        random_seed: Random seed for sample selection
+    """
+    print("=" * 70)
+    print("COMPARAISON PREPROCESSING")
+    print("=" * 70)
+
+    np.random.seed(random_seed)
+    n_images = len(images_raw)
+    n_samples = min(n_samples, n_images)
+
+    # Select random samples
+    indices = np.random.choice(n_images, size=n_samples, replace=False)
+
+    # Create figure - 2 columns (before, after)
+    fig, axes = plt.subplots(n_samples, 2, figsize=figsize)
+
+    # Ensure axes is 2D
+    if n_samples == 1:
+        axes = axes.reshape(1, -1)
+
+    print(f"\n📊 Comparaison de {n_samples} images")
+    print(f"   Raw range: [{images_raw.min():.1f}, {images_raw.max():.1f}]")
+    print(f"   Preprocessed range: [{images_preprocessed.min():.3f}, {images_preprocessed.max():.3f}]")
+
+    for i, idx in enumerate(indices):
+        img_raw = images_raw[idx]
+        img_prep = images_preprocessed[idx]
+
+        # Normalize raw for display
+        if img_raw.max() > 1:
+            img_raw_display = img_raw / 255.0
+        else:
+            img_raw_display = img_raw
+
+        # Normalize preprocessed for display
+        if img_prep.min() < 0:  # InceptionV3/ResNet style [-1, 1]
+            img_prep_display = (img_prep + 1) / 2
+        elif img_prep.max() > 1:
+            img_prep_display = img_prep / 255.0
+        else:
+            img_prep_display = img_prep
+
+        # Plot raw
+        if len(img_raw.shape) == 2 or img_raw.shape[-1] == 1:
+            axes[i, 0].imshow(img_raw_display.squeeze(), cmap="gray")
+        else:
+            axes[i, 0].imshow(img_raw_display)
+        axes[i, 0].set_title("Before", fontsize=10, fontweight="bold")
+        axes[i, 0].axis("off")
+
+        # Plot preprocessed
+        if len(img_prep.shape) == 2 or img_prep.shape[-1] == 1:
+            axes[i, 1].imshow(img_prep_display.squeeze(), cmap="gray")
+        else:
+            axes[i, 1].imshow(img_prep_display)
+        axes[i, 1].set_title("After", fontsize=10, fontweight="bold")
+        axes[i, 1].axis("off")
+
+        # Add label
+        if labels is not None:
+            axes[i, 0].set_ylabel(
+                f"{labels[idx]}", fontsize=11, fontweight="bold", rotation=0, ha="right"
+            )
+
+    plt.suptitle("Preprocessing: Avant vs Après", fontsize=16, fontweight="bold", y=0.995)
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"\n💾 Figure sauvegardée: {save_path}")
+
+    plt.show()
+    print("\n✅ Comparaison affichée!")
 
 # =============================================================================
 # TRAINING HISTORY
