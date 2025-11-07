@@ -354,6 +354,8 @@ def create_data_generators(
 # 2. MODEL BUILDING
 # =============================================================================
 
+# 2.1. Custom CNN
+
 def build_custom_cnn(
     input_shape: Tuple[int, int, int] = (128, 128, 3),
     num_classes: int = 4,
@@ -544,6 +546,278 @@ def create_callbacks(
         print(f"   • ModelCheckpoint (monitor={monitor})")
     
     return callbacks
+
+
+# 2.2. Transfer Learning Models
+
+def build_transfer_learning_model(
+    base_model_name: str = 'InceptionV3',
+    input_shape: Tuple[int, int, int] = (224, 224, 3),
+    num_classes: int = 4,
+    freeze_base: bool = True,
+    dropout_rate: float = 0.3,
+    dense_units: int = 128,
+    l2_reg: float = 0.01,
+    verbose: bool = True
+) -> Tuple[keras.Model, keras.Model]:
+    """
+    Build a transfer learning model with pretrained ImageNet weights.
+    
+    Supported models:
+        - VGG16
+        - ResNet50
+        - EfficientNetB0
+        - InceptionV3
+    
+    Args:
+        base_model_name: Name of the pretrained model
+        input_shape: Input image shape (should be 224x224x3 for most models)
+        num_classes: Number of output classes
+        freeze_base: If True, freeze base model weights
+        dropout_rate: Dropout rate for regularization
+        dense_units: Number of units in dense layer
+        l2_reg: L2 regularization factor
+        verbose: Print model information
+    
+    Returns:
+        Tuple of (complete_model, base_model)
+    """
+    from tensorflow.keras.applications import VGG16, ResNet50, EfficientNetB0, InceptionV3
+    
+    if verbose:
+        print("=" * 70)
+        print(f"TRANSFER LEARNING - {base_model_name.upper()}")
+        print("=" * 70)
+    
+    # Select base model
+    base_models = {
+        'VGG16': VGG16,
+        'ResNet50': ResNet50,
+        'EfficientNetB0': EfficientNetB0,
+        'InceptionV3': InceptionV3
+    }
+    
+    if base_model_name not in base_models:
+        raise ValueError(f"Base model inconnu: {base_model_name}. "
+                        f"Disponibles: {list(base_models.keys())}")
+    
+    # Load pretrained base model
+    base_model = base_models[base_model_name](
+        weights='imagenet',
+        include_top=False,
+        input_shape=input_shape
+    )
+    
+    # Freeze base model if requested
+    base_model.trainable = not freeze_base
+    
+    # Build complete model
+    model = models.Sequential([
+        base_model,
+        layers.GlobalAveragePooling2D(),
+        layers.Dropout(dropout_rate),
+        layers.Dense(dense_units, activation='relu', 
+                    kernel_regularizer=regularizers.l2(l2_reg)),
+        layers.Dropout(dropout_rate),
+        layers.Dense(num_classes, activation='softmax')
+    ], name=f'{base_model_name}_COVID19')
+    
+    if verbose:
+        trainable_params = sum([tf.size(w).numpy() for w in model.trainable_weights])
+        total_params = sum([tf.size(w).numpy() for w in model.weights])
+        
+        print(f"\n✅ Modèle créé")
+        print(f"   Base model: {base_model_name}")
+        print(f"   Input shape: {input_shape}")
+        print(f"   Output classes: {num_classes}")
+        print(f"   Base frozen: {'✅' if freeze_base else '❌'}")
+        print(f"\n📊 Paramètres:")
+        print(f"   Trainable:   {trainable_params:,}")
+        print(f"   Total:       {total_params:,}")
+        print(f"   Ratio:       {trainable_params/total_params:.1%}")
+    
+    return model, base_model
+
+
+def create_transfer_learning_generators(
+    X_train: np.ndarray,
+    y_train_cat: np.ndarray,
+    X_val: np.ndarray,
+    y_val_cat: np.ndarray,
+    X_test: Optional[np.ndarray] = None,
+    y_test_cat: Optional[np.ndarray] = None,
+    base_model_name: str = 'InceptionV3',
+    batch_size: int = 32,
+    augment_train: bool = True,
+    verbose: bool = True
+) -> Tuple[Any, Any, Optional[Any]]:
+    """
+    Create data generators with model-specific preprocessing.
+    
+    Each pretrained model requires its own preprocessing:
+    - VGG16/ResNet50: Subtract ImageNet mean
+    - InceptionV3: Normalize to [-1, 1]
+    - EfficientNetB0: Normalize to [0, 1]
+    
+    Args:
+        X_train: Training images
+        y_train_cat: Training labels (one-hot)
+        X_val: Validation images
+        y_val_cat: Validation labels (one-hot)
+        X_test: Test images (optional)
+        y_test_cat: Test labels (one-hot, optional)
+        base_model_name: Name of the pretrained model
+        batch_size: Batch size
+        augment_train: Apply augmentation to training data
+        verbose: Print generator information
+    
+    Returns:
+        Tuple of (train_generator, val_generator, test_generator)
+    """
+    from tensorflow.keras.applications.vgg16 import preprocess_input as vgg16_preprocess
+    from tensorflow.keras.applications.resnet50 import preprocess_input as resnet_preprocess
+    from tensorflow.keras.applications.efficientnet import preprocess_input as effnet_preprocess
+    from tensorflow.keras.applications.inception_v3 import preprocess_input as inception_preprocess
+    
+    if verbose:
+        print("=" * 70)
+        print(f"DATA GENERATORS - {base_model_name.upper()} PREPROCESSING")
+        print("=" * 70)
+    
+    # Select preprocessing function
+    preprocess_funcs = {
+        'VGG16': vgg16_preprocess,
+        'ResNet50': resnet_preprocess,
+        'EfficientNetB0': effnet_preprocess,
+        'InceptionV3': inception_preprocess
+    }
+    
+    if base_model_name not in preprocess_funcs:
+        raise ValueError(f"Preprocessing inconnu pour: {base_model_name}")
+    
+    preprocess_func = preprocess_funcs[base_model_name]
+    
+    # Training generator with augmentation
+    if augment_train:
+        train_datagen = ImageDataGenerator(
+            preprocessing_function=preprocess_func,
+            rotation_range=10,
+            width_shift_range=0.05,
+            height_shift_range=0.05,
+            horizontal_flip=False,  # Medical images - no horizontal flip
+            zoom_range=0.05,
+            fill_mode='nearest'
+        )
+        if verbose:
+            print("\n✅ Data augmentation configurée:")
+            print("  • Rotation: ±10°")
+            print("  • Shift: ±5%")
+            print("  • Zoom: ±5%")
+            print("  • Horizontal flip: NON (images médicales)")
+    else:
+        train_datagen = ImageDataGenerator(preprocessing_function=preprocess_func)
+        if verbose:
+            print("\n⚠️ Pas d'augmentation sur le training set")
+    
+    # Validation and test generators (no augmentation)
+    val_datagen = ImageDataGenerator(preprocessing_function=preprocess_func)
+    test_datagen = ImageDataGenerator(preprocessing_function=preprocess_func)
+    
+    if verbose:
+        print(f"  • Preprocessing: {base_model_name}")
+        print("\n📊 Création des générateurs...")
+    
+    train_generator = train_datagen.flow(
+        X_train, y_train_cat,
+        batch_size=batch_size,
+        shuffle=True
+    )
+    
+    val_generator = val_datagen.flow(
+        X_val, y_val_cat,
+        batch_size=batch_size,
+        shuffle=False
+    )
+    
+    test_generator = None
+    if X_test is not None and y_test_cat is not None:
+        test_generator = test_datagen.flow(
+            X_test, y_test_cat,
+            batch_size=batch_size,
+            shuffle=False
+        )
+    
+    if verbose:
+        print(f"  Train: {len(train_generator)} batches de {batch_size}")
+        print(f"  Val:   {len(val_generator)} batches de {batch_size}")
+        if test_generator:
+            print(f"  Test:  {len(test_generator)} batches de {batch_size}")
+    
+    return train_generator, val_generator, test_generator
+
+
+def unfreeze_top_layers(
+    base_model: keras.Model,
+    model: keras.Model,
+    n_layers: int = 4,
+    learning_rate: float = 5e-5,
+    verbose: bool = True
+) -> keras.Model:
+    """
+    Unfreeze top N layers of base model for fine-tuning.
+    
+    Args:
+        base_model: Base model to unfreeze
+        model: Complete model to recompile
+        n_layers: Number of top layers to unfreeze
+        learning_rate: Learning rate for fine-tuning (should be small)
+        verbose: Print unfreezing information
+    
+    Returns:
+        Recompiled model ready for fine-tuning
+    """
+    if verbose:
+        print("=" * 70)
+        print(f"FINE-TUNING - UNFREEZE TOP {n_layers} LAYERS")
+        print("=" * 70)
+    
+    # Unfreeze base model
+    base_model.trainable = True
+    
+    # Freeze all layers except top N
+    for layer in base_model.layers[:-n_layers]:
+        layer.trainable = False
+    
+    if verbose:
+        trainable_count = sum([1 for l in base_model.layers if l.trainable])
+        frozen_count = sum([1 for l in base_model.layers if not l.trainable])
+        
+        print(f"\n📊 Base model layers:")
+        print(f"   Trainable: {trainable_count}")
+        print(f"   Frozen:    {frozen_count}")
+    
+    # Recompile with lower learning rate
+    model.compile(
+        optimizer=Adam(learning_rate=learning_rate),
+        loss=CategoricalCrossentropy(),
+        metrics=[
+            keras.metrics.CategoricalAccuracy(name='accuracy'),
+            keras.metrics.Precision(name='precision'),
+            keras.metrics.Recall(name='recall')
+        ]
+    )
+    
+    if verbose:
+        trainable_params = sum([tf.size(w).numpy() for w in model.trainable_weights])
+        total_params = sum([tf.size(w).numpy() for w in model.weights])
+        
+        print(f"\n📊 Paramètres après unfreeze:")
+        print(f"   Trainable: {trainable_params:,}")
+        print(f"   Total:     {total_params:,}")
+        print(f"   Ratio:     {trainable_params/total_params:.1%}")
+        print(f"\n✅ Modèle recompilé avec LR={learning_rate}")
+    
+    return model
 
 
 # =============================================================================

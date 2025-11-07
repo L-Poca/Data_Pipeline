@@ -158,6 +158,8 @@ train_gen, val_gen, test_gen = create_data_generators(
 
 ### **2. Model Building**
 
+#### **2.1. Custom CNN**
+
 #### `build_custom_cnn()`
 Construit un CNN custom pour l'imagerie médicale.
 
@@ -213,6 +215,111 @@ callbacks = create_callbacks(
 1. `EarlyStopping` - Arrête si pas d'amélioration
 2. `ReduceLROnPlateau` - Réduit le LR si plateau
 3. `ModelCheckpoint` - Sauvegarde le meilleur modèle
+
+---
+
+#### **2.2. Transfer Learning (Fine-Tuning)**
+
+#### `build_transfer_learning_model()`
+Construit un modèle de Transfer Learning avec poids ImageNet pré-entraînés.
+
+```python
+model, base_model = build_transfer_learning_model(
+    base_model_name='InceptionV3',  # 'VGG16', 'ResNet50', 'EfficientNetB0', 'InceptionV3'
+    input_shape=(224, 224, 3),
+    num_classes=4,
+    freeze_base=True,  # True pour feature extraction
+    dropout_rate=0.3,
+    dense_units=128,
+    l2_reg=0.01,
+    verbose=True
+)
+```
+
+**Modèles disponibles:**
+- `VGG16` - 138M paramètres
+- `ResNet50` - 25M paramètres  
+- `EfficientNetB0` - 5M paramètres
+- `InceptionV3` - 24M paramètres
+
+**Returns:**
+- `model`: Modèle complet (base + head)
+- `base_model`: Modèle de base (pour fine-tuning ultérieur)
+
+---
+
+#### `create_transfer_learning_generators()`
+Crée des générateurs avec preprocessing spécifique à chaque modèle.
+
+```python
+train_gen, val_gen, test_gen = create_transfer_learning_generators(
+    X_train=X_train,
+    y_train_cat=y_train_cat,
+    X_val=X_val,
+    y_val_cat=y_val_cat,
+    X_test=X_test,           # Optionnel
+    y_test_cat=y_test_cat,   # Optionnel
+    base_model_name='InceptionV3',
+    batch_size=32,
+    augment_train=True,
+    verbose=True
+)
+```
+
+**Preprocessing par modèle:**
+- `VGG16/ResNet50`: Soustraction mean ImageNet [103.939, 116.779, 123.68]
+- `InceptionV3`: Normalisation [-1, 1]
+- `EfficientNetB0`: Normalisation [0, 1]
+
+**Augmentation (train uniquement):**
+- Rotation: ±10°
+- Shift: ±5%
+- Zoom: ±5%
+- **PAS** de flip horizontal (images médicales)
+
+---
+
+#### `unfreeze_top_layers()`
+Dégèle les dernières couches pour le fine-tuning.
+
+```python
+model = unfreeze_top_layers(
+    base_model=base_model,
+    model=model,
+    n_layers=4,         # Nombre de couches à dégeler
+    learning_rate=5e-5,  # LR très faible pour fine-tuning
+    verbose=True
+)
+```
+
+**Usage typique - 2 phases:**
+
+**Phase 1: Feature Extraction**
+```python
+# 1. Créer le modèle avec base gelée
+model, base_model = build_transfer_learning_model(
+    base_model_name='InceptionV3',
+    freeze_base=True
+)
+
+# 2. Compiler et entraîner
+model = compile_model(model, learning_rate=0.001)
+history_fe = train_model(model, train_gen, val_gen, class_weights, epochs=80)
+```
+
+**Phase 2: Fine-Tuning**
+```python
+# 3. Dégeler les top layers
+model = unfreeze_top_layers(
+    base_model=base_model,
+    model=model,
+    n_layers=4,
+    learning_rate=5e-5  # 100x plus faible!
+)
+
+# 4. Continuer l'entraînement
+history_ft = train_model(model, train_gen, val_gen, class_weights, epochs=50)
+```
 
 ---
 
@@ -396,6 +503,195 @@ gradcam, heatmaps = run_gradcam_analysis(
 )
 
 plt.show()
+```
+
+---
+
+## 📝 Exemple Complet
+
+### **Custom CNN**
+
+```python
+# 1. Imports
+from src.notebooks import *
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 2. Charger les données
+image_paths, _, labels, labels_int = load_dataset(
+    data_dir=config.data_dir,
+    categories=config.classes
+)
+
+# 3. Preprocessing
+pipeline = create_preprocessing_pipeline(img_size=(128, 128))
+images = pipeline.fit_transform(image_paths)
+images = images.astype('float32') / 255.0
+
+# 4. Split
+X_train, X_val, X_test, y_train_cat, y_val_cat, y_test_cat = prepare_train_val_test_split(
+    images, labels_int, num_classes=len(config.classes)
+)
+
+y_train = np.argmax(y_train_cat, axis=1)
+y_test = np.argmax(y_test_cat, axis=1)
+
+# 5. Class weights et generators
+class_weights = compute_class_weights(y_train, config.classes)
+train_gen, val_gen, test_gen = create_data_generators(
+    X_train, y_train_cat, X_val, y_val_cat, X_test, y_test_cat, batch_size=32
+)
+
+# 6. Modèle
+model = build_custom_cnn(input_shape=(128, 128, 3), num_classes=4)
+model = compile_model(model)
+callbacks = create_callbacks(models_dir=Path('results/models'))
+
+# 7. Entraînement
+history = train_model(model, train_gen, val_gen, class_weights, epochs=50, callbacks=callbacks)
+
+# 8. Évaluation
+y_pred, y_pred_proba = evaluate_model(model, X_test, y_test_cat, y_test, config.classes)
+
+# 9. Visualisation
+plot_training_curves(history, save_path=Path('results/curves.png'))
+plot_confusion_matrix(y_test, y_pred, config.classes, save_path=Path('results/cm.png'))
+
+# 10. Interprétabilité
+samples = select_sample_images(X_test, y_test, y_pred, y_pred_proba, config.classes)
+gradcam, heatmaps = run_gradcam_analysis(
+    model, X_test, y_pred, y_pred_proba, config.classes, samples, Path('results')
+)
+
+plt.show()
+```
+
+---
+
+### **Transfer Learning (InceptionV3)**
+
+```python
+# 1-4. Identique au Custom CNN jusqu'au split
+
+# 5. Class weights
+y_train = np.argmax(y_train_cat, axis=1)
+class_weights = compute_class_weights(y_train, config.classes)
+
+# 6. Créer le modèle Transfer Learning
+model, base_model = build_transfer_learning_model(
+    base_model_name='InceptionV3',
+    input_shape=(224, 224, 3),  # ⚠️ 224x224 pour Transfer Learning!
+    num_classes=4,
+    freeze_base=True  # Phase 1: Feature Extraction
+)
+
+# 7. Générateurs avec preprocessing InceptionV3
+train_gen, val_gen, test_gen = create_transfer_learning_generators(
+    X_train, y_train_cat, X_val, y_val_cat, X_test, y_test_cat,
+    base_model_name='InceptionV3',
+    batch_size=32
+)
+
+# 8. Compiler
+model = compile_model(model, learning_rate=0.001)
+callbacks = create_callbacks(models_dir=Path('results/models_tl'))
+
+# 9. PHASE 1: Feature Extraction (base gelée)
+print("🚀 PHASE 1: Feature Extraction")
+history_fe = train_model(
+    model, train_gen, val_gen, class_weights, 
+    epochs=80, callbacks=callbacks
+)
+
+# 10. PHASE 2: Fine-Tuning (dégeler top layers)
+print("🚀 PHASE 2: Fine-Tuning")
+model = unfreeze_top_layers(
+    base_model=base_model,
+    model=model,
+    n_layers=30,  # InceptionV3: dégeler les 30 dernières couches
+    learning_rate=5e-5  # LR 100x plus faible!
+)
+
+history_ft = train_model(
+    model, train_gen, val_gen, class_weights, 
+    epochs=50, callbacks=callbacks
+)
+
+# 11. Évaluation
+y_pred, y_pred_proba = evaluate_model(model, X_test, y_test_cat, y_test, config.classes)
+
+# 12. Visualisation
+plot_training_curves(history_ft, save_path=Path('results/curves_ft.png'))
+plot_confusion_matrix(y_test, y_pred, config.classes, save_path=Path('results/cm_tl.png'))
+
+plt.show()
+```
+
+---
+
+### **Comparaison de Plusieurs Modèles**
+
+```python
+# Tester plusieurs architectures Transfer Learning
+models_to_test = ['VGG16', 'ResNet50', 'EfficientNetB0', 'InceptionV3']
+results = {}
+
+for model_name in models_to_test:
+    print(f"\n{'='*70}")
+    print(f"ENTRAÎNEMENT: {model_name}")
+    print(f"{'='*70}")
+    
+    # 1. Créer le modèle
+    model, base_model = build_transfer_learning_model(
+        base_model_name=model_name,
+        freeze_base=True
+    )
+    
+    # 2. Générateurs avec preprocessing spécifique
+    train_gen, val_gen, test_gen = create_transfer_learning_generators(
+        X_train, y_train_cat, X_val, y_val_cat, X_test, y_test_cat,
+        base_model_name=model_name
+    )
+    
+    # 3. Feature Extraction
+    model = compile_model(model, learning_rate=0.001)
+    callbacks = create_callbacks(models_dir=Path(f'results/{model_name.lower()}'))
+    
+    history_fe = train_model(model, train_gen, val_gen, class_weights, epochs=80, callbacks=callbacks)
+    
+    # 4. Fine-Tuning
+    n_layers = 4 if model_name != 'InceptionV3' else 30
+    model = unfreeze_top_layers(base_model, model, n_layers=n_layers, learning_rate=5e-5)
+    
+    history_ft = train_model(model, train_gen, val_gen, class_weights, epochs=50, callbacks=callbacks)
+    
+    # 5. Évaluation
+    y_pred, y_pred_proba = evaluate_model(model, X_test, y_test_cat, y_test, config.classes)
+    
+    # Sauvegarder les résultats
+    results[model_name] = {
+        'y_pred': y_pred,
+        'y_pred_proba': y_pred_proba,
+        'history_fe': history_fe,
+        'history_ft': history_ft
+    }
+
+# Comparer les résultats
+print("\n" + "="*70)
+print("COMPARAISON DES MODÈLES")
+print("="*70)
+
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+
+for model_name, res in results.items():
+    acc = accuracy_score(y_test, res['y_pred'])
+    prec = precision_score(y_test, res['y_pred'], average='weighted')
+    rec = recall_score(y_test, res['y_pred'], average='weighted')
+    
+    print(f"\n{model_name:20s}")
+    print(f"  Accuracy:  {acc:.4f}")
+    print(f"  Precision: {prec:.4f}")
+    print(f"  Recall:    {rec:.4f}")
 ```
 
 ---

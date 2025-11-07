@@ -1,11 +1,11 @@
 """
 Notebook utilities module.
 
-Provides reusable functions for Jupyter notebooks including:
+Provides reusable functions for Jupyter notebooks:
 - Data loading and preprocessing
-- Model building and training
-- Evaluation and visualization
-- Interpretability analysis
+- Custom CNN and Transfer Learning model building
+- Training and evaluation
+- Visualization and interpretability
 """
 
 from .notebook_utils import (
@@ -16,10 +16,15 @@ from .notebook_utils import (
     compute_class_weights,
     create_data_generators,
     
-    # Model building
+    # Model building - Custom CNN
     build_custom_cnn,
     compile_model,
     create_callbacks,
+    
+    # Model building - Transfer Learning
+    build_transfer_learning_model,
+    create_transfer_learning_generators,
+    unfreeze_top_layers,
     
     # Training & evaluation
     train_model,
@@ -36,19 +41,24 @@ from .notebook_utils import (
 )
 
 __all__ = [
-    # Data loading & preprocessing
+    # Data
     'load_dataset',
     'create_preprocessing_pipeline',
     'prepare_train_val_test_split',
     'compute_class_weights',
     'create_data_generators',
     
-    # Model building
+    # Custom CNN
     'build_custom_cnn',
     'compile_model',
     'create_callbacks',
     
-    # Training & evaluation
+    # Transfer Learning
+    'build_transfer_learning_model',
+    'create_transfer_learning_generators',
+    'unfreeze_top_layers',
+    
+    # Training
     'train_model',
     'evaluate_model',
     
