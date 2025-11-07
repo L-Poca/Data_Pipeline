@@ -22,6 +22,12 @@ import keras
 # Import from interpretability module
 from src.interpretability.gradcam import GradCAM, visualize_gradcam
 
+# Import preprocessing functions
+from keras.applications.inception_v3 import preprocess_input as inception_preprocess
+from keras.applications.vgg16 import preprocess_input as vgg16_preprocess
+from keras.applications.resnet50 import preprocess_input as resnet_preprocess
+from keras.applications.efficientnet import preprocess_input as efficientnet_preprocess
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -29,6 +35,32 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # SETUP
 # =============================================================================
+
+
+def get_preprocessing_function(model_name: str) -> callable:
+    """
+    Get the appropriate preprocessing function for a transfer learning model.
+    
+    Args:
+        model_name: Name of the base model ('InceptionV3', 'VGG16', 'ResNet50', 'EfficientNetB0')
+    
+    Returns:
+        Preprocessing function
+    """
+    preprocessing_map = {
+        'InceptionV3': inception_preprocess,
+        'VGG16': vgg16_preprocess,
+        'ResNet50': resnet_preprocess,
+        'EfficientNetB0': efficientnet_preprocess,
+    }
+    
+    if model_name not in preprocessing_map:
+        raise ValueError(
+            f"Unknown model: {model_name}. "
+            f"Supported: {list(preprocessing_map.keys())}"
+        )
+    
+    return preprocessing_map[model_name]
 
 
 def setup_interpretability(model: keras.Model, verbose: bool = True) -> GradCAM:
@@ -216,18 +248,20 @@ def run_gradcam_analysis(
     class_names: List[str],
     y_pred_probs: Optional[np.ndarray] = None,
     save_dir: Optional[Path] = None,
+    preprocess_fn: Optional[callable] = None,
 ) -> None:
     """
     Run Grad-CAM analysis on selected samples.
 
     Args:
         gradcam: GradCAM object
-        x_data: Image data
+        x_data: Image data (raw images, not preprocessed)
         indices: Indices of samples to analyze
         descriptions: Description for each sample
         class_names: List of class names
         y_pred_probs: Predicted probabilities (optional)
         save_dir: Directory to save figures (optional)
+        preprocess_fn: Preprocessing function to apply (e.g., InceptionV3 preprocessing)
     """
     print("=" * 70)
     print(f"ANALYSE GRAD-CAM - {len(indices)} ÉCHANTILLONS")
@@ -236,15 +270,24 @@ def run_gradcam_analysis(
     if save_dir:
         save_dir.mkdir(parents=True, exist_ok=True)
         print(f"\n💾 Sauvegarde dans: {save_dir}")
+    
+    if preprocess_fn is not None:
+        print("⚠️  Preprocessing appliqué aux images pour Grad-CAM")
 
     for i, (idx, desc) in enumerate(zip(indices, descriptions)):
         print(f"\n[{i + 1}/{len(indices)}] {desc}")
 
-        # Get image
-        img = x_data[idx]
+        # Get image (raw, pour visualisation)
+        img_raw = x_data[idx].copy()
+        
+        # Apply preprocessing if provided (pour le modèle)
+        if preprocess_fn is not None:
+            img_preprocessed = preprocess_fn(x_data[idx].copy())
+        else:
+            img_preprocessed = img_raw
 
-        # Compute Grad-CAM heatmap
-        heatmap = gradcam.compute_heatmap(img, class_idx=None)  # Use predicted class
+        # Compute Grad-CAM heatmap (avec image preprocessée)
+        heatmap = gradcam.compute_heatmap(img_preprocessed, class_idx=None)  # Use predicted class
 
         # Get predicted class info if available
         class_name = ""
@@ -254,9 +297,14 @@ def run_gradcam_analysis(
             class_name = class_names[pred_idx]
             confidence = y_pred_probs[idx][pred_idx]
 
-        # Visualize
+        # Visualize (avec image RAW pour affichage correct)
+        # Normaliser l'image raw pour affichage (0-1)
+        img_display = img_raw.astype('float32')
+        if img_display.max() > 1:
+            img_display = img_display / 255.0
+        
         fig = visualize_gradcam(
-            img,
+            img_display,
             heatmap,
             class_name=class_name,
             confidence=confidence,
