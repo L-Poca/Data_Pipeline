@@ -17,11 +17,17 @@ from pathlib import Path
 from typing import Tuple, List
 
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers, models, regularizers
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import CategoricalCrossentropy
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+import keras
+from keras import layers, models, regularizers
+from keras.optimizers import Adam
+from keras.losses import CategoricalCrossentropy
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from keras.applications import (
+    VGG16,
+    ResNet50,
+    EfficientNetB0,
+    InceptionV3,
+)
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -135,6 +141,7 @@ def build_custom_cnn(
 # =============================================================================
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
 def build_transfer_learning_model(
     base_model_name: str = "InceptionV3",
     input_shape: Tuple[int, int, int] = (224, 224, 3),
@@ -167,13 +174,6 @@ def build_transfer_learning_model(
     Returns:
         Tuple of (complete_model, base_model)
     """
-    from tensorflow.keras.applications import (
-        VGG16,
-        ResNet50,
-        EfficientNetB0,
-        InceptionV3,
-    )
-
     if verbose:
         print("=" * 70)
         print(f"TRANSFER LEARNING - {base_model_name.upper()}")
@@ -222,7 +222,7 @@ def build_transfer_learning_model(
         trainable_params = sum(tf.size(w).numpy() for w in model.trainable_weights)
         total_params = sum(tf.size(w).numpy() for w in model.weights)
 
-        print(f"\n✅ Modèle créé")
+        print("\n✅ Modèle créé")
         print(f"   Base model: {base_model_name}")
         print(f"   Input shape: {input_shape}")
         print(f"   Output classes: {num_classes}")
@@ -271,7 +271,7 @@ def unfreeze_top_layers(
         trainable_count = sum(1 for layer in base_model.layers if layer.trainable)
         frozen_count = sum(1 for layer in base_model.layers if not layer.trainable)
 
-        print(f"\n📊 Base model layers:")
+        print("\n📊 Base model layers:")
         print(f"   Trainable: {trainable_count}")
         print(f"   Frozen:    {frozen_count}")
 
@@ -290,7 +290,7 @@ def unfreeze_top_layers(
         trainable_params = sum(tf.size(w).numpy() for w in model.trainable_weights)
         total_params = sum(tf.size(w).numpy() for w in model.weights)
 
-        print(f"\n📊 Paramètres après unfreeze:")
+        print("\n📊 Paramètres après unfreeze:")
         print(f"   Trainable: {trainable_params:,}")
         print(f"   Total:     {total_params:,}")
         print(f"   Ratio:     {trainable_params / total_params:.1%}")

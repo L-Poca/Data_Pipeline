@@ -16,7 +16,7 @@ from typing import List, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from tensorflow import keras
+import keras
 from sklearn.metrics import confusion_matrix
 
 # Configure logger
@@ -32,6 +32,7 @@ sns.set_palette("husl")
 # =============================================================================
 
 
+# pylint: disable=too-many-locals
 def plot_training_curves(
     history: keras.callbacks.History,
     history_ft: Optional[keras.callbacks.History] = None,
@@ -153,6 +154,7 @@ def plot_training_curves(
 # =============================================================================
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def plot_confusion_matrix(
     y_true: np.ndarray,
     y_pred: np.ndarray,

@@ -14,8 +14,10 @@ import logging
 from typing import Dict, List, Optional
 
 import numpy as np
-from tensorflow import keras
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.metrics import classification_report
+
+import keras
+from keras.preprocessing.image import ImageDataGenerator
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -26,6 +28,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def train_model(
     model: keras.Model,
     train_generator: ImageDataGenerator,
@@ -102,6 +105,7 @@ def train_model(
 # =============================================================================
 
 
+# pylint: disable=too-many-locals
 def evaluate_model(
     model: keras.Model,
     test_data,
@@ -132,18 +136,18 @@ def evaluate_model(
 
     # Detect input format
     if isinstance(test_data, tuple):
-        # Format: (X_test, y_test_categorical)
-        X_test, y_test_cat = test_data
+        # Format: (x_test, y_test_categorical)
+        x_test, y_test_cat = test_data
 
         if verbose:
-            print("   Mode: Arrays (X_test, y_test)")
-            print(f"   Samples: {len(X_test)}")
+            print("   Mode: Arrays (x_test, y_test)")
+            print(f"   Samples: {len(x_test)}")
 
         # Evaluate
-        test_results = model.evaluate(X_test, y_test_cat, verbose=0)
+        test_results = model.evaluate(x_test, y_test_cat, verbose=0)
 
         # Get predictions
-        y_pred_probs = model.predict(X_test, verbose=0)
+        y_pred_probs = model.predict(x_test, verbose=0)
         y_pred = np.argmax(y_pred_probs, axis=1)
         y_true = np.argmax(y_test_cat, axis=1)
 
@@ -179,8 +183,6 @@ def evaluate_model(
             print(f"   {metric}: {value:.4f}")
 
     # Calculate per-class metrics
-    from sklearn.metrics import classification_report
-
     if class_names is None:
         class_names = [f"Class {i}" for i in range(len(np.unique(y_true)))]
 

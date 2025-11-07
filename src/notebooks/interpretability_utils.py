@@ -17,10 +17,10 @@ from typing import List, Tuple, Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow import keras
+import keras
 
 # Import from interpretability module
-from src.interpretability.gradcam import GradCAM
+from src.interpretability.gradcam import GradCAM, visualize_gradcam
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -86,8 +86,9 @@ def setup_interpretability(model: keras.Model, verbose: bool = True) -> GradCAM:
 # =============================================================================
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches
 def select_sample_images(
-    X_data: np.ndarray,
+    x_data: np.ndarray,
     y_true: np.ndarray,
     y_pred: np.ndarray,
     class_names: List[str],
@@ -105,13 +106,13 @@ def select_sample_images(
         - 'one_per_class': One sample per class (correctly classified)
 
     Args:
-        X_data: Image data
+        x_data: Image data
         y_true: True labels
         y_pred: Predicted labels
         class_names: List of class names
         n_samples: Number of samples to select per class
         strategy: Selection strategy
-        random_state: Random seed
+        random_seed: Random seed
 
     Returns:
         Tuple of (indices, descriptions)
@@ -177,8 +178,8 @@ def select_sample_images(
 
     elif strategy == "random":
         # Random selection
-        n_total = min(n_samples * len(class_names), len(X_data))
-        indices = np.random.choice(len(X_data), size=n_total, replace=False).tolist()
+        n_total = min(n_samples * len(class_names), len(x_data))
+        indices = np.random.choice(len(x_data), size=n_total, replace=False).tolist()
 
         for idx in indices:
             true_class = class_names[y_true[idx]]
@@ -206,9 +207,10 @@ def select_sample_images(
 # =============================================================================
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
 def run_gradcam_analysis(
     gradcam: GradCAM,
-    X_data: np.ndarray,
+    x_data: np.ndarray,
     indices: List[int],
     descriptions: List[str],
     class_names: List[str],
@@ -220,7 +222,7 @@ def run_gradcam_analysis(
 
     Args:
         gradcam: GradCAM object
-        X_data: Image data
+        x_data: Image data
         indices: Indices of samples to analyze
         descriptions: Description for each sample
         class_names: List of class names
@@ -239,13 +241,10 @@ def run_gradcam_analysis(
         print(f"\n[{i + 1}/{len(indices)}] {desc}")
 
         # Get image
-        img = X_data[idx]
+        img = x_data[idx]
 
         # Compute Grad-CAM heatmap
         heatmap = gradcam.compute_heatmap(img, class_idx=None)  # Use predicted class
-
-        # Import visualization function
-        from src.interpretability.gradcam import visualize_gradcam
 
         # Get predicted class info if available
         class_name = ""

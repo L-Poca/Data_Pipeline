@@ -21,13 +21,24 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.pipeline import Pipeline
 
-from tensorflow import keras
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import keras
+from keras.preprocessing.image import ImageDataGenerator
+from keras.applications.vgg16 import preprocess_input as vgg16_preprocess
+from keras.applications.resnet50 import preprocess_input as resnet_preprocess
+from keras.applications.efficientnet import preprocess_input as effnet_preprocess
+from keras.applications.inception_v3 import preprocess_input as inception_preprocess
+
+from src.features.Pipelines.Transformateurs.image_loaders import ImageLoader
+from src.features.Pipelines.Transformateurs.image_preprocessing import (
+    ImageResizer,
+    ImageMasker,
+)
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-locals
 def load_dataset(
     data_dir: Path,
     categories: List[str],
@@ -121,12 +132,6 @@ def create_preprocessing_pipeline(
     Returns:
         sklearn Pipeline
     """
-    from src.features.Pipelines.Transformateurs.image_loaders import ImageLoader
-    from src.features.Pipelines.Transformateurs.image_preprocessing import (
-        ImageResizer,
-        ImageMasker,
-    )
-
     if verbose:
         print("=" * 70)
         print("PREPROCESSING PIPELINE")
@@ -149,6 +154,7 @@ def create_preprocessing_pipeline(
     return pipeline
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def prepare_train_val_test_split(
     images: np.ndarray,
     labels_int: np.ndarray,
@@ -171,7 +177,7 @@ def prepare_train_val_test_split(
         verbose: Print split information
 
     Returns:
-        Tuple of (X_train, X_val, X_test, y_train_cat, y_val_cat, y_test_cat)
+        Tuple of (x_train, x_val, x_test, y_train_cat, y_val_cat, y_test_cat)
     """
     if verbose:
         print("=" * 70)
@@ -187,7 +193,7 @@ def prepare_train_val_test_split(
         print(error_msg)
 
     # First split: train+val vs test
-    X_train_val, X_test, y_train_val, y_test = train_test_split(
+    x_train_val, x_test, y_train_val, y_test = train_test_split(
         images,
         labels_int,
         test_size=test_size,
@@ -197,8 +203,8 @@ def prepare_train_val_test_split(
 
     # Second split: train vs val
     val_size_adjusted = val_size / (1 - test_size)
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train_val,
+    x_train, x_val, y_train, y_val = train_test_split(
+        x_train_val,
         y_train_val,
         test_size=val_size_adjusted,
         random_state=random_seed,
@@ -211,14 +217,14 @@ def prepare_train_val_test_split(
     y_test_cat = keras.utils.to_categorical(y_test, num_classes=num_classes)
 
     if verbose:
-        print(f"\nTrain set: {X_train.shape[0]} images")
+        print(f"\nTrain set: {x_train.shape[0]} images")
         print(f"  Distribution: {np.bincount(y_train)}")
-        print(f"\nValidation set: {X_val.shape[0]} images")
+        print(f"\nValidation set: {x_val.shape[0]} images")
         print(f"  Distribution: {np.bincount(y_val)}")
-        print(f"\nTest set: {X_test.shape[0]} images")
+        print(f"\nTest set: {x_test.shape[0]} images")
         print(f"  Distribution: {np.bincount(y_test)}")
 
-    return X_train, X_val, X_test, y_train_cat, y_val_cat, y_test_cat
+    return x_train, x_val, x_test, y_train_cat, y_val_cat, y_test_cat
 
 
 def compute_class_weights(
@@ -255,12 +261,13 @@ def compute_class_weights(
     return class_weights
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 def create_data_generators(
-    X_train: np.ndarray,
+    x_train: np.ndarray,
     y_train_cat: np.ndarray,
-    X_val: np.ndarray,
+    x_val: np.ndarray,
     y_val_cat: np.ndarray,
-    X_test: Optional[np.ndarray] = None,
+    x_test: Optional[np.ndarray] = None,
     y_test_cat: Optional[np.ndarray] = None,
     batch_size: int = 32,
     augment_train: bool = True,
@@ -270,11 +277,11 @@ def create_data_generators(
     Create Keras data generators with optional augmentation.
 
     Args:
-        X_train: Training images
+        x_train: Training images
         y_train_cat: Training labels (one-hot)
-        X_val: Validation images
+        x_val: Validation images
         y_val_cat: Validation labels (one-hot)
-        X_test: Test images (optional)
+        x_test: Test images (optional)
         y_test_cat: Test labels (one-hot, optional)
         batch_size: Batch size
         augment_train: Apply augmentation to training data
@@ -282,7 +289,7 @@ def create_data_generators(
 
     Returns:
         Tuple of (train_generator, val_generator, test_generator)
-        test_generator is None if X_test not provided
+        test_generator is None if x_test not provided
     """
     if verbose:
         print("=" * 70)
@@ -318,17 +325,17 @@ def create_data_generators(
         print("\n📊 Création des générateurs...")
 
     train_generator = train_datagen.flow(
-        X_train, y_train_cat, batch_size=batch_size, shuffle=True
+        x_train, y_train_cat, batch_size=batch_size, shuffle=True
     )
 
     val_generator = val_datagen.flow(
-        X_val, y_val_cat, batch_size=batch_size, shuffle=False
+        x_val, y_val_cat, batch_size=batch_size, shuffle=False
     )
 
     test_generator = None
-    if X_test is not None and y_test_cat is not None:
+    if x_test is not None and y_test_cat is not None:
         test_generator = test_datagen.flow(
-            X_test, y_test_cat, batch_size=batch_size, shuffle=False
+            x_test, y_test_cat, batch_size=batch_size, shuffle=False
         )
 
     if verbose:
@@ -340,12 +347,13 @@ def create_data_generators(
     return train_generator, val_generator, test_generator
 
 
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
 def create_transfer_learning_generators(
-    X_train: np.ndarray,
+    x_train: np.ndarray,
     y_train_cat: np.ndarray,
-    X_val: np.ndarray,
+    x_val: np.ndarray,
     y_val_cat: np.ndarray,
-    X_test: Optional[np.ndarray] = None,
+    x_test: Optional[np.ndarray] = None,
     y_test_cat: Optional[np.ndarray] = None,
     base_model_name: str = "InceptionV3",
     batch_size: int = 32,
@@ -361,11 +369,11 @@ def create_transfer_learning_generators(
     - EfficientNetB0: Normalize to [0, 1]
 
     Args:
-        X_train: Training images
+        x_train: Training images
         y_train_cat: Training labels (one-hot)
-        X_val: Validation images
+        x_val: Validation images
         y_val_cat: Validation labels (one-hot)
-        X_test: Test images (optional)
+        x_test: Test images (optional)
         y_test_cat: Test labels (one-hot, optional)
         base_model_name: Name of the pretrained model
         batch_size: Batch size
@@ -375,17 +383,6 @@ def create_transfer_learning_generators(
     Returns:
         Tuple of (train_generator, val_generator, test_generator)
     """
-    from tensorflow.keras.applications.vgg16 import preprocess_input as vgg16_preprocess
-    from tensorflow.keras.applications.resnet50 import (
-        preprocess_input as resnet_preprocess,
-    )
-    from tensorflow.keras.applications.efficientnet import (
-        preprocess_input as effnet_preprocess,
-    )
-    from tensorflow.keras.applications.inception_v3 import (
-        preprocess_input as inception_preprocess,
-    )
-
     if verbose:
         print("=" * 70)
         print(f"DATA GENERATORS - {base_model_name.upper()} PREPROCESSING")
@@ -435,17 +432,17 @@ def create_transfer_learning_generators(
         print("\n📊 Création des générateurs...")
 
     train_generator = train_datagen.flow(
-        X_train, y_train_cat, batch_size=batch_size, shuffle=True
+        x_train, y_train_cat, batch_size=batch_size, shuffle=True
     )
 
     val_generator = val_datagen.flow(
-        X_val, y_val_cat, batch_size=batch_size, shuffle=False
+        x_val, y_val_cat, batch_size=batch_size, shuffle=False
     )
 
     test_generator = None
-    if X_test is not None and y_test_cat is not None:
+    if x_test is not None and y_test_cat is not None:
         test_generator = test_datagen.flow(
-            X_test, y_test_cat, batch_size=batch_size, shuffle=False
+            x_test, y_test_cat, batch_size=batch_size, shuffle=False
         )
 
     if verbose:
