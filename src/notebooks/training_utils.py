@@ -59,7 +59,7 @@ def train_model(
         for cls, weight in class_weights.items():
             print(f"   Classe {cls}: {weight:.3f}")
 
-    print(f"\n🏋️ Début de l'entraînement...")
+    print("\n🏋️ Début de l'entraînement...")
     print(f"   Epochs: {epochs}")
     print(f"   Train batches: {len(train_generator)}")
     print(f"   Val batches: {len(val_generator)}")
@@ -128,7 +128,7 @@ def evaluate_model(
         print("=" * 70)
         print("ÉVALUATION SUR TEST SET")
         print("=" * 70)
-        print(f"\n🧪 Évaluation en cours...")
+        print("\n🧪 Évaluation en cours...")
 
     # Detect input format
     if isinstance(test_data, tuple):
@@ -136,7 +136,7 @@ def evaluate_model(
         X_test, y_test_cat = test_data
 
         if verbose:
-            print(f"   Mode: Arrays (X_test, y_test)")
+            print("   Mode: Arrays (X_test, y_test)")
             print(f"   Samples: {len(X_test)}")
 
         # Evaluate
@@ -152,7 +152,7 @@ def evaluate_model(
         test_generator = test_data
 
         if verbose:
-            print(f"   Mode: Generator")
+            print("   Mode: Generator")
             print(f"   Batches: {len(test_generator)}")
 
         # Evaluate

@@ -71,7 +71,7 @@ def setup_interpretability(model: keras.Model, verbose: bool = True) -> GradCAM:
         raise ValueError("Aucune couche convolutionnelle trouvée dans le modèle!")
 
     if verbose:
-        print(f"\n✅ Grad-CAM configuré")
+        print("\n✅ Grad-CAM configuré")
         print(f"   Couche convolutionnelle: {conv_layer_name}")
         print(f"   Modèle: {model.name}")
 
@@ -192,7 +192,7 @@ def select_sample_images(
         raise ValueError(f"Stratégie inconnue: {strategy}")
 
     # Print summary
-    print(f"\n📊 Résumé:")
+    print("\n📊 Résumé:")
     print(f"   Total: {len(indices)} échantillons")
     for desc in set(descriptions):
         count = descriptions.count(desc)

@@ -14,7 +14,7 @@ Date: November 2025
 
 import logging
 from pathlib import Path
-from typing import Tuple, List, Optional
+from typing import Tuple, List
 
 import tensorflow as tf
 from tensorflow import keras
@@ -222,12 +222,12 @@ def build_transfer_learning_model(
         trainable_params = sum([tf.size(w).numpy() for w in model.trainable_weights])
         total_params = sum([tf.size(w).numpy() for w in model.weights])
 
-        print(f"\n✅ Modèle créé")
+        print("\n✅ Modèle créé")
         print(f"   Base model: {base_model_name}")
         print(f"   Input shape: {input_shape}")
         print(f"   Output classes: {num_classes}")
         print(f"   Base frozen: {'✅' if freeze_base else '❌'}")
-        print(f"\n📊 Paramètres:")
+        print("\n📊 Paramètres:")
         print(f"   Trainable:   {trainable_params:,}")
         print(f"   Total:       {total_params:,}")
         print(f"   Ratio:       {trainable_params / total_params:.1%}")
@@ -271,7 +271,7 @@ def unfreeze_top_layers(
         trainable_count = sum([1 for l in base_model.layers if l.trainable])
         frozen_count = sum([1 for l in base_model.layers if not l.trainable])
 
-        print(f"\n📊 Base model layers:")
+        print("\n📊 Base model layers:")
         print(f"   Trainable: {trainable_count}")
         print(f"   Frozen:    {frozen_count}")
 
@@ -290,7 +290,7 @@ def unfreeze_top_layers(
         trainable_params = sum([tf.size(w).numpy() for w in model.trainable_weights])
         total_params = sum([tf.size(w).numpy() for w in model.weights])
 
-        print(f"\n📊 Paramètres après unfreeze:")
+        print("\n📊 Paramètres après unfreeze:")
         print(f"   Trainable: {trainable_params:,}")
         print(f"   Total:     {total_params:,}")
         print(f"   Ratio:     {trainable_params / total_params:.1%}")
@@ -340,8 +340,8 @@ def compile_model(
         print("\n✅ Modèle compilé")
         print(f"   Optimizer: {optimizer.__class__.__name__}")
         print(f"   Learning rate: {learning_rate}")
-        print(f"   Loss: CategoricalCrossentropy")
-        print(f"   Metrics: accuracy, auc, precision, recall")
+        print("   Loss: CategoricalCrossentropy")
+        print("   Metrics: accuracy, auc, precision, recall")
 
     return model
 
@@ -396,7 +396,7 @@ def create_callbacks(
     ]
 
     if verbose:
-        print(f"\n✅ Callbacks configurés:")
+        print("\n✅ Callbacks configurés:")
         print(f"   • EarlyStopping (patience={patience_early_stop})")
         print(f"   • ReduceLROnPlateau (factor=0.5, patience={patience_reduce_lr})")
         print(f"   • ModelCheckpoint (monitor={monitor})")
