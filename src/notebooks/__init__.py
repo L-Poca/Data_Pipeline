@@ -29,6 +29,9 @@ from .data_utils import (
 # Model building
 from .model_builders import (
     build_custom_cnn,
+    build_simple_cnn,
+    build_medium_cnn,
+    build_deep_cnn,
     compile_model,
     create_callbacks,
     build_transfer_learning_model,
@@ -65,6 +68,9 @@ __all__ = [
     "create_transfer_learning_generators",
     # Model building
     "build_custom_cnn",
+    "build_simple_cnn",
+    "build_medium_cnn",
+    "build_deep_cnn",
     "compile_model",
     "create_callbacks",
     "build_transfer_learning_model",
