@@ -45,6 +45,16 @@ Exemple d'usage simple du pipeline (version legacy).
 
 **Note**: Pour les nouveaux projets, utilisez plutôt `CELL_CONFIG_STANDALONE.py` et les exemples de `config_usage_examples.py`.
 
+### 3. Advanced EDA Template
+
+#### 📊 `advanced_eda_usage.py`
+Exemple d'utilisation du notebook template d'analyse exploratoire avancée:
+- Workflow complet de l'EDA
+- Exemples de chaque étape d'analyse
+- Guide conceptuel des fonctionnalités
+
+**👉 Voir aussi: `notebooks/advanced_eda_template.ipynb` et `notebooks/README_advanced_eda.md`**
+
 ## 📂 Structure
 
 ```
@@ -53,6 +63,7 @@ examples/
 ├── CONFIG_USAGE_GUIDE.md          # Documentation complète de config
 ├── config_usage_examples.py       # Exemples de code pratiques
 ├── demo_config_benefits.py        # Démonstration comparative
+├── advanced_eda_usage.py          # Exemple d'usage du template EDA avancé
 └── basic_usage.py                 # Usage basique (legacy)
 ```
 
@@ -92,6 +103,9 @@ examples/
 
 #### ...utiliser Grad-CAM ou SHAP
 → Voir la section "Interprétabilité" dans `config_usage_examples.py`
+
+#### ...faire une analyse exploratoire avancée (PCA, t-SNE, clustering)
+→ Utilisez le template `notebooks/advanced_eda_template.ipynb`
 
 ## 🔗 Ressources complémentaires
 
