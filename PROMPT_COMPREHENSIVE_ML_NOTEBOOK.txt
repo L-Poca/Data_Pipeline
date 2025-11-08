@@ -1,0 +1,745 @@
+# 🎯 MISSION : Créer un notebook ML ultra-complet pour classification COVID-19
+
+## 📋 CONTEXTE
+- **Projet** : Data Pipeline COVID-19 Radiography Classification
+- **Repository** : https://github.com/L-Poca/Data_Pipeline
+- **Branche** : rafael_cleaning
+- **Structure existante** : `advanced_eda_template_w_outputs_full_dataset.ipynb` (template EDA réussi)
+- **Objectif** : Notebook ML exhaustif avec même architecture (cellule config standalone, Colab ready, rapport HTML auto)
+
+## 🎨 ARCHITECTURE DU NOTEBOOK
+
+### **Nom du fichier**
+`notebooks/comprehensive_ml_pipeline.ipynb`
+
+### **Structure à suivre (comme l'EDA)**
+1. **Colab Badge** en première cellule Markdown :
+   ```markdown
+   # 🦠 Comprehensive Machine Learning Pipeline - COVID-19 Classification
+   
+   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/L-Poca/Data_Pipeline/blob/rafael_cleaning/notebooks/comprehensive_ml_pipeline.ipynb)
+   ```
+
+2. **Cellule Config Standalone** : comme dans le template EDA
+   - ⚠️ NE PAS MODIFIER cette cellule
+   - Elle gère : détection env, bootstrap Colab, imports transformers, config complète
+   
+3. **Markdown Introduction** : Vue d'ensemble + objectifs
+
+4. **22 sections ML complètes** (détaillées ci-dessous)
+
+5. **Rapport HTML automatique** à la fin
+
+---
+
+## 📝 CONTENU EXHAUSTIF REQUIS
+
+### **Section 1 : Imports Complémentaires pour ML/DL**
+
+```python
+# =============================================================================
+# IMPORTS ML/DL COMPLÉMENTAIRES
+# =============================================================================
+
+print("=" * 70)
+print("IMPORTS ML/DL COMPLÉMENTAIRES")
+print("=" * 70)
+
+# Machine Learning
+from sklearn.ensemble import (
+    RandomForestClassifier, GradientBoostingClassifier, 
+    AdaBoostClassifier, VotingClassifier, StackingClassifier
+)
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import (
+    classification_report, confusion_matrix, accuracy_score,
+    f1_score, precision_score, recall_score, roc_auc_score,
+    roc_curve, precision_recall_curve, cohen_kappa_score,
+    matthews_corrcoef
+)
+from sklearn.model_selection import (
+    cross_val_score, StratifiedKFold, GridSearchCV, RandomizedSearchCV
+)
+
+# Deep Learning
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers, models
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.callbacks import (
+    EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+)
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import (
+    InceptionV3, ResNet50, ResNet152, VGG16, VGG19,
+    EfficientNetB0, EfficientNetB3, EfficientNetB7,
+    DenseNet121, DenseNet169, MobileNetV2, Xception
+)
+
+print(f"✅ TensorFlow version: {tf.__version__}")
+
+# Hyperparameter tuning
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+try:
+    import optuna
+    OPTUNA_AVAILABLE = True
+    print("✅ Optuna disponible")
+except ImportError:
+    OPTUNA_AVAILABLE = False
+    print("⚠️ Optuna non disponible. Installez-le pour le tuning avancé : pip install optuna")
+
+# Interpretability
+try:
+    import shap
+    SHAP_AVAILABLE = True
+    print("✅ SHAP disponible")
+except ImportError:
+    SHAP_AVAILABLE = False
+    print("⚠️ SHAP non disponible. Installez-le : pip install shap")
+
+try:
+    import lime
+    from lime import lime_image
+    LIME_AVAILABLE = True
+    print("✅ LIME disponible")
+except ImportError:
+    LIME_AVAILABLE = False
+    print("⚠️ LIME non disponible. Installez-le : pip install lime")
+
+# Class imbalance
+try:
+    from imblearn.over_sampling import SMOTE, RandomOverSampler
+    from imblearn.under_sampling import RandomUnderSampler
+    from imblearn.combine import SMOTETomek
+    IMBLEARN_AVAILABLE = True
+    print("✅ imbalanced-learn disponible")
+except ImportError:
+    IMBLEARN_AVAILABLE = False
+    print("⚠️ imbalanced-learn non disponible. Installez-le : pip install imbalanced-learn")
+
+# Utils
+from tqdm import tqdm
+import time
+from datetime import datetime
+import json
+import warnings
+warnings.filterwarnings('ignore')
+
+print("\n✅ Imports ML/DL complets")
+```
+
+### **Section 2 : Chargement des Données**
+
+**Configuration paramétrable** :
+```python
+# =============================================================================
+# CONFIGURATION DU DATASET
+# =============================================================================
+
+print("=" * 70)
+print("CONFIGURATION DU DATASET")
+print("=" * 70)
+
+# ⚠️ PARAMÈTRE IMPORTANT : Nombre d'images par classe
+# None = toutes les images (~21K total)
+# 100/500/1000 = tests rapides
+N_IMAGES_PER_CLASS = None  # Modifier pour tests rapides
+
+print(f"\n📊 Configuration:")
+print(f"   Images par classe: {N_IMAGES_PER_CLASS if N_IMAGES_PER_CLASS else 'TOUTES'}")
+```
+
+**Chargement** :
+```python
+# =============================================================================
+# CHARGEMENT DES DONNÉES
+# =============================================================================
+
+print("\n" + "=" * 70)
+print("CHARGEMENT DES DONNÉES")
+print("=" * 70)
+
+from src.notebooks import load_dataset, create_preprocessing_pipeline
+
+# Charger les chemins des images
+image_paths, mask_paths, labels, labels_int = load_dataset(
+    data_dir=config.data_dir,
+    categories=config.classes,
+    n_images_per_class=N_IMAGES_PER_CLASS,
+    load_masks=False,  # Pas besoin des masques pour classification
+    verbose=True
+)
+
+print(f"\n✅ Dataset chargé:")
+print(f"   Total images: {len(image_paths)}")
+print(f"   Classes: {config.classes}")
+print(f"   Distribution: {np.bincount(labels_int)}")
+
+# Créer pipeline de preprocessing
+pipeline_img = create_preprocessing_pipeline(
+    img_size=config.img_size,
+    color_mode='L',  # Grayscale
+    mask_paths=None,
+    verbose=True
+)
+
+# Charger et preprocesser
+print("\n📊 Preprocessing des images...")
+images = pipeline_img.fit_transform(image_paths)
+images = images.astype('float32') / 255.0  # Normaliser [0, 1]
+
+print(f"\n✅ Images préparées:")
+print(f"   Shape: {images.shape}")
+print(f"   Range: [{images.min():.3f}, {images.max():.3f}]")
+```
+
+**Visualisation échantillons** (comme test_ml_models.ipynb) :
+```python
+# Visualisation
+fig, axes = plt.subplots(4, 8, figsize=(16, 8))
+for i in range(4):
+    for j in range(8):
+        idx = i * (len(images) // 4) + j
+        if idx < len(images):
+            axes[i, j].imshow(images[idx], cmap='gray')
+            if j == 0:
+                axes[i, j].set_ylabel(config.classes[i], rotation=0, ha='right', va='center')
+            axes[i, j].axis('off')
+plt.suptitle('Échantillons du Dataset', size=14, weight='bold')
+plt.tight_layout()
+plt.show()
+```
+
+### **Section 3 : Analyse du Class Imbalance**
+
+**CRITIQUE - Résultats EDA montrent :**
+- Normal: 48.2%
+- Lung_Opacity: 28.4%
+- COVID: 17.1%
+- Viral Pneumonia: 6.4% ⚠️
+
+```python
+# =============================================================================
+# ANALYSE DU CLASS IMBALANCE
+# =============================================================================
+
+print("=" * 70)
+print("ANALYSE DU CLASS IMBALANCE")
+print("=" * 70)
+
+# Distribution
+unique, counts = np.unique(labels_int, return_counts=True)
+total = len(labels_int)
+
+print("\n📊 Distribution actuelle:")
+for cls_idx, count in zip(unique, counts):
+    percentage = (count / total) * 100
+    print(f"   {config.classes[cls_idx]:20s}: {count:6d} images ({percentage:5.2f}%)")
+
+# Ratio de déséquilibre
+max_count, min_count = counts.max(), counts.min()
+imbalance_ratio = max_count / min_count
+print(f"\n⚠️ Ratio de déséquilibre: {imbalance_ratio:.2f}:1")
+
+if imbalance_ratio > 2:
+    print("   → Class imbalance significatif détecté!")
+    print("   → Stratégies de rééquilibrage nécessaires")
+
+# Visualisation
+fig, ax = plt.subplots(figsize=(10, 6))
+colors = sns.color_palette('husl', len(config.classes))
+bars = ax.bar(config.classes, counts, color=colors)
+ax.set_ylabel('Nombre d\'images', fontsize=11)
+ax.set_title('Distribution des Classes (Déséquilibrée)', fontsize=13, weight='bold')
+ax.grid(axis='y', alpha=0.3)
+
+# Ajouter pourcentages sur les barres
+for bar, count in zip(bars, counts):
+    height = bar.get_height()
+    ax.text(bar.get_x() + bar.get_width()/2., height,
+            f'{count}\n({count/total*100:.1f}%)',
+            ha='center', va='bottom', fontsize=9)
+plt.tight_layout()
+plt.show()
+```
+
+**Stratégies de rééquilibrage** :
+```python
+# =============================================================================
+# STRATÉGIES DE RÉÉQUILIBRAGE
+# =============================================================================
+
+print("\n" + "=" * 70)
+print("STRATÉGIES DE RÉÉQUILIBRAGE")
+print("=" * 70)
+
+imbalance_strategies = {}
+
+# 1. CLASS WEIGHTS (sklearn)
+print("\n1️⃣ Class Weights (sklearn)")
+from sklearn.utils.class_weight import compute_class_weight
+
+class_weights_array = compute_class_weight(
+    'balanced',
+    classes=np.unique(labels_int),
+    y=labels_int
+)
+class_weights_dict = dict(enumerate(class_weights_array))
+
+print("   Poids calculés:")
+for cls_idx, weight in class_weights_dict.items():
+    print(f"      {config.classes[cls_idx]:20s}: {weight:.3f}")
+
+imbalance_strategies['class_weights'] = class_weights_dict
+
+# 2. SMOTE (si disponible)
+if IMBLEARN_AVAILABLE:
+    print("\n2️⃣ SMOTE (Synthetic Minority Over-sampling)")
+    # Note: SMOTE sera appliqué uniquement sur les features ML, pas sur les images brutes
+    print("   ✅ Disponible (sera appliqué lors du training ML)")
+    imbalance_strategies['smote_available'] = True
+else:
+    print("\n2️⃣ SMOTE non disponible")
+    imbalance_strategies['smote_available'] = False
+
+# 3. RANDOM OVERSAMPLING
+print("\n3️⃣ Random Oversampling")
+print("   ✅ Disponible (duplication d'images de la classe minoritaire)")
+imbalance_strategies['oversampling'] = True
+
+# 4. RANDOM UNDERSAMPLING
+print("\n4️⃣ Random Undersampling")
+print("   ✅ Disponible (réduction de la classe majoritaire)")
+imbalance_strategies['undersampling'] = True
+
+print("\n✅ Stratégies identifiées et prêtes")
+```
+
+### **Section 4 : Train/Val/Test Split Stratifié**
+
+**Split 70/15/15 avec stratification** :
+```python
+# =============================================================================
+# SPLIT TRAIN/VAL/TEST STRATIFIÉ
+# =============================================================================
+
+print("=" * 70)
+print("SPLIT TRAIN/VAL/TEST STRATIFIÉ")
+print("=" * 70)
+
+# Étape 1: Split 70/30 (train / temp)
+X_train, X_temp, y_train, y_temp = train_test_split(
+    images, labels_int,
+    test_size=0.30,
+    random_state=config.random_seed,
+    stratify=labels_int
+)
+
+# Étape 2: Split 30 → 15/15 (validation / test)
+X_val, X_test, y_val, y_test = train_test_split(
+    X_temp, y_temp,
+    test_size=0.50,
+    random_state=config.random_seed,
+    stratify=y_temp
+)
+
+print(f"\n📊 Splits créés:")
+print(f"   Train: {X_train.shape[0]:5d} images ({X_train.shape[0]/len(images)*100:.1f}%)")
+print(f"      Distribution: {np.bincount(y_train)}")
+print(f"   Val:   {X_val.shape[0]:5d} images ({X_val.shape[0]/len(images)*100:.1f}%)")
+print(f"      Distribution: {np.bincount(y_val)}")
+print(f"   Test:  {X_test.shape[0]:5d} images ({X_test.shape[0]/len(images)*100:.1f}%)")
+print(f"      Distribution: {np.bincount(y_test)}")
+
+# Vérifier stratification
+print("\n✅ Vérification de la stratification:")
+print(f"   {'Classe':<20s} {'Train %':>10s} {'Val %':>10s} {'Test %':>10s}")
+print("   " + "-" * 50)
+for i, cls_name in enumerate(config.classes):
+    train_pct = (y_train == i).sum() / len(y_train) * 100
+    val_pct = (y_val == i).sum() / len(y_val) * 100
+    test_pct = (y_test == i).sum() / len(y_test) * 100
+    print(f"   {cls_name:<20s} {train_pct:>9.2f}% {val_pct:>9.2f}% {test_pct:>9.2f}%")
+```
+
+### **Section 5 : Data Augmentation**
+
+```python
+# =============================================================================
+# DATA AUGMENTATION
+# =============================================================================
+
+print("=" * 70)
+print("DATA AUGMENTATION")
+print("=" * 70)
+
+# Configuration
+augmentation_config = {
+    'rotation_range': 15,
+    'width_shift_range': 0.1,
+    'height_shift_range': 0.1,
+    'horizontal_flip': True,
+    'zoom_range': 0.15,
+    'shear_range': 0.1,
+    'fill_mode': 'nearest'
+}
+
+print("\n🔧 Configuration:")
+for key, value in augmentation_config.items():
+    print(f"   {key:25s}: {value}")
+
+# Créer générateurs
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+train_datagen = ImageDataGenerator(**augmentation_config)
+val_datagen = ImageDataGenerator()  # Pas d'augmentation pour validation
+
+print("\n✅ Générateurs créés")
+
+# Visualisation de l'effet
+print("\n📸 Visualisation de l'augmentation...")
+sample_img = X_train[0:1]
+if sample_img.ndim == 3:
+    sample_img = sample_img[..., np.newaxis]
+
+fig, axes = plt.subplots(3, 3, figsize=(12, 12))
+axes = axes.ravel()
+
+axes[0].imshow(sample_img[0, :, :, 0], cmap='gray')
+axes[0].set_title('Original', fontsize=10)
+axes[0].axis('off')
+
+aug_iter = train_datagen.flow(sample_img, batch_size=1)
+for i in range(1, 9):
+    aug_img = next(aug_iter)[0]
+    axes[i].imshow(aug_img[:, :, 0], cmap='gray')
+    axes[i].set_title(f'Augmentée {i}', fontsize=10)
+    axes[i].axis('off')
+
+plt.suptitle('Effet de l\'Augmentation de Données', size=14, weight='bold')
+plt.tight_layout()
+plt.show()
+```
+
+### **Section 6 : Baseline ML Models**
+
+**Préparer 3 types de features** :
+```python
+# =============================================================================
+# PRÉPARATION DES FEATURES POUR ML
+# =============================================================================
+
+print("=" * 70)
+print("PRÉPARATION DES FEATURES POUR ML")
+print("=" * 70)
+
+from src.features.Pipelines.Transformateurs.image_features import (
+    ImagePCA, ImageStandardScaler, ImageHistogram
+)
+from src.features.Pipelines.Transformateurs.image_preprocessing import ImageFlattener
+
+# 1. Pipeline PCA
+print("\n1️⃣ Features PCA...")
+n_pca_components = min(100, X_train.shape[0] - 1)
+
+pipeline_pca = Pipeline([
+    ('flatten', ImageFlattener(verbose=False)),
+    ('scale', ImageStandardScaler(verbose=False)),
+    ('pca', ImagePCA(n_components=n_pca_components, random_state=config.random_seed, verbose=False))
+])
+
+X_train_pca = pipeline_pca.fit_transform(X_train)
+X_val_pca = pipeline_pca.transform(X_val)
+X_test_pca = pipeline_pca.transform(X_test)
+
+pca_obj = pipeline_pca.named_steps['pca']
+print(f"   ✅ {X_train_pca.shape[1]} composantes")
+print(f"   Variance expliquée: {pca_obj.explained_variance_ratio_.sum():.2%}")
+
+# 2. Pipeline Histogram
+print("\n2️⃣ Features Histogram...")
+pipeline_hist = Pipeline([
+    ('histogram', ImageHistogram(bins=64, density=True, verbose=False)),
+    ('scale', ImageStandardScaler(verbose=False))
+])
+
+X_train_hist = pipeline_hist.fit_transform(X_train)
+X_val_hist = pipeline_hist.transform(X_val)
+X_test_hist = pipeline_hist.transform(X_test)
+
+print(f"   ✅ {X_train_hist.shape[1]} bins")
+
+# 3. Features combinées
+print("\n3️⃣ Features Combinées (PCA + Histogram)...")
+X_train_combined = np.hstack([X_train_pca, X_train_hist])
+X_val_combined = np.hstack([X_val_pca, X_val_hist])
+X_test_combined = np.hstack([X_test_pca, X_test_hist])
+
+print(f"   ✅ {X_train_combined.shape[1]} features")
+print(f"      PCA: {X_train_pca.shape[1]}")
+print(f"      Histogram: {X_train_hist.shape[1]}")
+```
+
+**Entraîner 9 modèles ML avec 3 feature sets** :
+```python
+# =============================================================================
+# BASELINE ML MODELS
+# =============================================================================
+
+print("\n" + "=" * 70)
+print("BASELINE ML MODELS")
+print("=" * 70)
+
+# Définir les modèles
+ml_models = {
+    'Random Forest': RandomForestClassifier(
+        n_estimators=200,
+        max_depth=20,
+        random_state=config.random_seed,
+        n_jobs=-1,
+        class_weight='balanced'
+    ),
+    'Gradient Boosting': GradientBoostingClassifier(
+        n_estimators=100,
+        learning_rate=0.1,
+        max_depth=5,
+        random_state=config.random_seed
+    ),
+    'AdaBoost': AdaBoostClassifier(
+        n_estimators=100,
+        learning_rate=0.5,
+        random_state=config.random_seed
+    ),
+    'SVM (RBF)': SVC(
+        kernel='rbf',
+        C=1.0,
+        gamma='scale',
+        random_state=config.random_seed,
+        class_weight='balanced'
+    ),
+    'SVM (Linear)': SVC(
+        kernel='linear',
+        C=1.0,
+        random_state=config.random_seed,
+        class_weight='balanced'
+    ),
+    'Logistic Regression': LogisticRegression(
+        max_iter=1000,
+        random_state=config.random_seed,
+        n_jobs=-1,
+        class_weight='balanced'
+    ),
+    'KNN': KNeighborsClassifier(
+        n_neighbors=5,
+        n_jobs=-1
+    ),
+    'Naive Bayes': GaussianNB(),
+    'Decision Tree': DecisionTreeClassifier(
+        max_depth=10,
+        random_state=config.random_seed,
+        class_weight='balanced'
+    )
+}
+
+# Feature sets
+feature_sets = {
+    'PCA': (X_train_pca, X_val_pca, X_test_pca),
+    'Histogram': (X_train_hist, X_val_hist, X_test_hist),
+    'Combined': (X_train_combined, X_val_combined, X_test_combined)
+}
+
+# Stocker résultats
+ml_results = {}
+
+print(f"\n🚀 Entraînement de {len(ml_models)} modèles × {len(feature_sets)} feature sets")
+print(f"   Total: {len(ml_models) * len(feature_sets)} combinaisons")
+
+for feat_name, (X_tr, X_va, X_te) in feature_sets.items():
+    print(f"\n{'='*70}")
+    print(f"FEATURES: {feat_name}")
+    print(f"{'='*70}")
+    
+    for model_name, model in tqdm(ml_models.items(), desc=f"Training {feat_name}"):
+        key = f"{model_name} ({feat_name})"
+        
+        # Training
+        start_time = time.time()
+        model.fit(X_tr, y_train)
+        train_time = time.time() - start_time
+        
+        # Predictions
+        y_pred_train = model.predict(X_tr)
+        y_pred_val = model.predict(X_va)
+        y_pred_test = model.predict(X_te)
+        
+        # Inference time
+        start_time = time.time()
+        _ = model.predict(X_te)
+        inference_time = (time.time() - start_time) / len(X_te) * 1000
+        
+        # Metrics
+        ml_results[key] = {
+            'model': model,
+            'feature_type': feat_name,
+            'train_acc': accuracy_score(y_train, y_pred_train),
+            'val_acc': accuracy_score(y_val, y_pred_val),
+            'test_acc': accuracy_score(y_test, y_pred_test),
+            'f1_weighted': f1_score(y_test, y_pred_test, average='weighted'),
+            'f1_macro': f1_score(y_test, y_pred_test, average='macro'),
+            'precision': precision_score(y_test, y_pred_test, average='weighted'),
+            'recall': recall_score(y_test, y_pred_test, average='weighted'),
+            'train_time': train_time,
+            'inference_time_ms': inference_time,
+            'y_pred_test': y_pred_test,
+            'y_pred_val': y_pred_val
+        }
+
+# Tableau récapitulatif
+print("\n" + "=" * 70)
+print("RÉSULTATS ML MODELS")
+print("=" * 70)
+
+print(f"\n{'Modèle':<40s} {'Train':>8s} {'Val':>8s} {'Test':>8s} {'F1':>8s}")
+print("-" * 80)
+
+for key in sorted(ml_results.keys(), key=lambda x: ml_results[x]['test_acc'], reverse=True):
+    res = ml_results[key]
+    print(f"{key:<40s} {res['train_acc']:>8.4f} {res['val_acc']:>8.4f} {res['test_acc']:>8.4f} {res['f1_weighted']:>8.4f}")
+
+print("\n✅ Baseline ML terminé")
+```
+
+### **Section 7 : CNN Custom (3 architectures)**
+
+**NOTE : Sections 7-22 suivent exactement la structure du fichier .txt original que j'ai généré précédemment.**
+
+**Pour économiser l'espace, je résume les sections restantes :**
+
+**Section 7** : 3 CNN architectures (Simple, Medium, Deep) avec callbacks
+**Section 8** : Transfer Learning - 12 modèles (InceptionV3, ResNet50/152, VGG16/19, EfficientNet B0/B3/B7, DenseNet 121/169, MobileNetV2, Xception) - 2 phases par modèle
+**Section 9** : Ensemble Methods (Voting, Averaging, Stacking)
+**Section 10** : Hyperparameter Optimization (GridSearchCV, Optuna optionnel)
+**Section 11** : K-Fold Cross-Validation (5-fold stratifié)
+**Section 12** : Learning Curves (training/validation)
+**Section 13** : Model Evaluation (métriques par classe)
+**Section 14** : Confusion Matrices (comparaison top modèles)
+**Section 15** : Feature Importance (ML) + Filter viz (DL)
+**Section 16** : Interpretability (GradCAM, LIME, SHAP)
+**Section 17** : Error Analysis (top 20 erreurs avec viz)
+**Section 18** : ROC & PR Curves (multi-class)
+**Section 19** : Model Saving (pickle + .keras + metadata JSON)
+**Section 20** : Prediction Pipeline (fonction de prédiction complète)
+**Section 21** : Performance Benchmarking (tableau comparatif final)
+**Section 22** : Rapport HTML Automatique (style comme EDA)
+
+---
+
+## ✅ CRITÈRES DE QUALITÉ
+
+### **Code**
+- ✅ Style identique à test_ml_models.ipynb (docstrings, prints formatés)
+- ✅ Gestion erreurs (try/except pour libs optionnelles)
+- ✅ Progress bars (tqdm) pour loops longs
+- ✅ Commentaires clairs
+- ✅ Modularité
+
+### **Visualisations**
+- ✅ Style cohérent (seaborn whitegrid)
+- ✅ Titres descriptifs
+- ✅ Légendes
+- ✅ Figsize adaptées
+- ✅ Tight layout
+
+### **Performance**
+- ✅ Option N_IMAGES_PER_CLASS pour tests rapides
+- ✅ Caching si possible
+- ✅ n_jobs=-1 pour parallélisation
+- ✅ GPU detection auto
+
+### **Reproductibilité**
+- ✅ Random seeds (config.random_seed partout)
+- ✅ Versioning modèles
+- ✅ Logs détaillés
+
+---
+
+## 🎯 LIVRABLE FINAL
+
+**Fichier** : `notebooks/comprehensive_ml_pipeline.ipynb`
+**Taille estimée** : ~1500-2000 lignes
+**Exécution** :
+- Mode rapide : 100-500 images/classe (~30-60min)
+- Mode complet : Dataset entier (~3-5h GPU)
+
+**Colab Badge** : Première cellule Markdown
+**Cellule Config** : Copie exacte de test_ml_models.ipynb
+
+---
+
+## 💡 STRUCTURE FINALE DU NOTEBOOK
+
+1. [![Colab Badge]
+2. Cellule Config Standalone (NE PAS MODIFIER)
+3. Introduction Markdown
+4. Section 1: Imports ML/DL
+5. Section 2: Chargement données
+6. Section 3: Class Imbalance
+7. Section 4: Train/Val/Test Split
+8. Section 5: Data Augmentation
+9. Section 6: Baseline ML (9 modèles × 3 features)
+10. Section 7: CNN Custom (3 architectures)
+11. Section 8: Transfer Learning (12 modèles)
+12. Section 9: Ensemble Methods
+13. Section 10: Hyperparameter Optimization
+14. Section 11: K-Fold CV
+15. Section 12: Learning Curves
+16. Section 13: Model Evaluation
+17. Section 14: Confusion Matrices
+18. Section 15: Feature Importance
+19. Section 16: Interpretability
+20. Section 17: Error Analysis
+21. Section 18: ROC & PR Curves
+22. Section 19: Model Saving
+23. Section 20: Prediction Pipeline
+24. Section 21: Benchmarking
+25. Section 22: Rapport HTML
+26. Résumé Final Markdown
+
+---
+
+## ⚠️ CONTRAINTES ABSOLUES
+
+1. **NE PAS** modifier la cellule config de standalone
+2. **Support Colab** obligatoire (auto-bootstrap)
+3. **Class imbalance** traité en priorité (class_weights partout)
+4. **GPU detection** automatique
+5. **Graceful degradation** si libs optionnelles absentes
+6. **N_IMAGES_PER_CLASS** configurable en haut
+7. **Rapport HTML** style identique à l'EDA
+
+---
+
+## 🚀 INSTRUCTIONS D'EXÉCUTION
+
+Une fois le notebook créé, l'utilisateur pourra :
+
+1. **Tests rapides** : Modifier `N_IMAGES_PER_CLASS = 100`
+2. **Production** : `N_IMAGES_PER_CLASS = None` (toutes les images)
+3. **Sur Colab** : Cliquer sur le badge → Auto-clone → Auto-install → GO
+4. **En local/WSL** : Ouvrir directement et exécuter
+
+**Résultats attendus** :
+- Comparaison exhaustive de 40+ modèles
+- Identification du meilleur modèle
+- Rapport HTML professionnel
+- Modèles sauvegardés prêts pour production
+
+---
+
+**FIN DU PROMPT**
+
+Copier tout ce fichier et le donner au coding agent via "Delegate to coding agent" dans GitHub Copilot.
