@@ -802,10 +802,14 @@ def run_full_interpretability_analysis(
         n_samples=n_samples,
         strategy=strategy
     )
+    
+    # Extract selected data and predictions
+    x_selected = x_data[indices]
+    y_pred_selected = y_pred[indices]
 
     # Get predicted probabilities
     print("\nCalcul des probabilités de prédiction...")
-    y_pred_probs = model.predict(x_data[indices], verbose=0)
+    y_pred_probs = model.predict(x_selected, verbose=0)
 
     # 1. Grad-CAM Analysis
     if use_gradcam:
@@ -815,7 +819,7 @@ def run_full_interpretability_analysis(
             print("=" * 70)
             gradcam = setup_interpretability(model, verbose=True)
             run_gradcam_analysis(
-                gradcam, x_data, indices, descriptions, class_names,
+                gradcam, x_selected, list(range(len(indices))), descriptions, class_names,
                 y_pred_probs=y_pred_probs,
                 save_dir=gradcam_dir,
                 preprocess_fn=preprocess_fn
@@ -837,8 +841,8 @@ def run_full_interpretability_analysis(
             )
             if lime_explainer:
                 run_lime_analysis(
-                    lime_explainer, x_data, indices, descriptions, class_names,
-                    y_pred=y_pred[indices],
+                    lime_explainer, x_selected, list(range(len(indices))), descriptions, class_names,
+                    y_pred=y_pred_selected,
                     num_features=5,
                     save_dir=lime_dir
                 )
@@ -865,8 +869,8 @@ def run_full_interpretability_analysis(
             )
             if shap_explainer:
                 run_shap_analysis(
-                    shap_explainer, x_data, indices, descriptions, class_names,
-                    y_pred=y_pred[indices],
+                    shap_explainer, x_selected, list(range(len(indices))), descriptions, class_names,
+                    y_pred=y_pred_selected,
                     save_dir=shap_dir
                 )
         except Exception as e:
