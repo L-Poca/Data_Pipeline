@@ -13,7 +13,8 @@ Date: November 2025
 
 import logging
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Callable
+import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,6 +22,21 @@ import keras
 
 # Import from interpretability module
 from src.interpretability.gradcam import GradCAM, visualize_gradcam
+
+# Try to import LIME and SHAP
+try:
+    from src.interpretability.lime_explainer import LIMEImageExplainer
+    LIME_AVAILABLE = True
+except ImportError:
+    LIME_AVAILABLE = False
+    warnings.warn("LIME non disponible. Installez avec: pip install lime", ImportWarning)
+
+try:
+    from src.interpretability.shap_explainer import SHAPExplainer
+    SHAP_AVAILABLE = True
+except ImportError:
+    SHAP_AVAILABLE = False
+    warnings.warn("SHAP non disponible. Installez avec: pip install shap", ImportWarning)
 
 # Import preprocessing functions
 from keras.applications.inception_v3 import preprocess_input as inception_preprocess
@@ -324,3 +340,545 @@ def run_gradcam_analysis(
         plt.show()
 
     print("\n✅ Analyse Grad-CAM terminée!")
+
+
+# =============================================================================
+# LIME ANALYSIS
+# =============================================================================
+
+
+def setup_lime_explainer(
+    model: keras.Model,
+    segmentation_method: str = 'quickshift',
+    num_samples: int = 1000,
+    batch_size: int = 32,
+    verbose: bool = True
+) -> Optional[LIMEImageExplainer]:
+    """
+    Initialize LIME explainer for model interpretability.
+
+    Args:
+        model: Trained Keras model
+        segmentation_method: Method for image segmentation ('quickshift', 'felzenszwalb', 'slic')
+        num_samples: Number of perturbed samples for LIME
+        batch_size: Batch size for predictions
+        verbose: Print setup information
+
+    Returns:
+        LIMEImageExplainer object or None if LIME not available
+    """
+    if not LIME_AVAILABLE:
+        print("⚠️  LIME non disponible. Installez avec: pip install lime")
+        return None
+
+    if verbose:
+        print("=" * 70)
+        print("SETUP INTERPRÉTABILITÉ - LIME")
+        print("=" * 70)
+
+    # Initialize LIME
+    lime_explainer = LIMEImageExplainer(
+        predict_fn=model.predict,
+        segmentation_method=segmentation_method,
+        num_samples=num_samples,
+        batch_size=batch_size
+    )
+
+    if verbose:
+        print("\n✅ LIME configuré")
+        print(f"   Méthode de segmentation: {segmentation_method}")
+        print(f"   Nombre d'échantillons: {num_samples}")
+        print(f"   Batch size: {batch_size}")
+
+    return lime_explainer
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+def run_lime_analysis(
+    lime_explainer: LIMEImageExplainer,
+    x_data: np.ndarray,
+    indices: List[int],
+    descriptions: List[str],
+    class_names: List[str],
+    y_pred: Optional[np.ndarray] = None,
+    num_features: int = 5,
+    save_dir: Optional[Path] = None,
+    show_boundaries: bool = True,
+) -> None:
+    """
+    Run LIME analysis on selected samples.
+
+    Args:
+        lime_explainer: LIME explainer object
+        x_data: Image data (normalized 0-1)
+        indices: Indices of samples to analyze
+        descriptions: Description for each sample
+        class_names: List of class names
+        y_pred: Predicted class indices (optional)
+        num_features: Number of superpixels to highlight
+        save_dir: Directory to save figures (optional)
+        show_boundaries: Show superpixel boundaries
+    """
+    if lime_explainer is None:
+        print("⚠️  LIME non disponible")
+        return
+
+    print("=" * 70)
+    print(f"ANALYSE LIME - {len(indices)} ÉCHANTILLONS")
+    print("=" * 70)
+
+    if save_dir:
+        save_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\n💾 Sauvegarde dans: {save_dir}")
+
+    for i, (idx, desc) in enumerate(zip(indices, descriptions)):
+        print(f"\n[{i + 1}/{len(indices)}] {desc}")
+
+        # Get image
+        img = x_data[idx].copy()
+        
+        # Normalize if needed
+        if img.max() > 1:
+            img = img / 255.0
+
+        # Get predicted class
+        if y_pred is not None:
+            pred_class = y_pred[idx]
+        else:
+            pred_probs = lime_explainer.predict_fn(img[np.newaxis, ...])
+            pred_class = np.argmax(pred_probs[0])
+
+        # Generate LIME explanation
+        print(f"   Génération de l'explication LIME (classe: {class_names[pred_class]})...")
+        explanation = lime_explainer.explain_instance(
+            img,
+            top_labels=1,
+            num_features=num_features,
+            random_seed=42 + i
+        )
+
+        # Visualize
+        if show_boundaries:
+            fig = lime_explainer.visualize_explanation_boundaries(
+                img,
+                explanation,
+                label=pred_class,
+                num_features=num_features,
+                figsize=(12, 5)
+            )
+        else:
+            fig = lime_explainer.visualize_explanation(
+                img,
+                explanation,
+                label=pred_class,
+                num_features=num_features,
+                positive_only=True,
+                hide_rest=False,
+                figsize=(15, 5)
+            )
+
+        # Add description as super title
+        fig.suptitle(f"LIME - {desc}", fontsize=14, fontweight="bold", y=1.02)
+
+        # Save if requested
+        if save_dir:
+            save_path = save_dir / f"lime_{i + 1:02d}.png"
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            print(f"   💾 Sauvegardé: {save_path.name}")
+
+        plt.show()
+
+        # Optionally show feature contributions
+        fig_contrib = lime_explainer.visualize_top_features(
+            explanation,
+            label=pred_class,
+            num_features=num_features,
+            figsize=(10, 6)
+        )
+        
+        if save_dir:
+            save_path_contrib = save_dir / f"lime_contrib_{i + 1:02d}.png"
+            plt.savefig(save_path_contrib, dpi=300, bbox_inches="tight")
+            print(f"   💾 Contributions sauvegardées: {save_path_contrib.name}")
+        
+        plt.show()
+
+    print("\n✅ Analyse LIME terminée!")
+
+
+def compare_lime_segmentation(
+    lime_explainer: LIMEImageExplainer,
+    image: np.ndarray,
+    save_dir: Optional[Path] = None,
+) -> None:
+    """
+    Compare different segmentation methods for LIME.
+
+    Args:
+        lime_explainer: LIME explainer (any config, will be overridden)
+        image: Image to segment
+        save_dir: Directory to save figure
+    """
+    if lime_explainer is None:
+        print("⚠️  LIME non disponible")
+        return
+
+    print("=" * 70)
+    print("COMPARAISON DES MÉTHODES DE SEGMENTATION LIME")
+    print("=" * 70)
+
+    # Normalize image
+    if image.max() > 1:
+        image = image / 255.0
+
+    fig = lime_explainer.compare_segmentation_methods(
+        image,
+        methods=['quickshift', 'felzenszwalb', 'slic'],
+        figsize=(16, 5)
+    )
+
+    if save_dir:
+        save_dir.mkdir(parents=True, exist_ok=True)
+        save_path = save_dir / "lime_segmentation_comparison.png"
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"   💾 Sauvegardé: {save_path}")
+
+    plt.show()
+
+    print("\n✅ Comparaison terminée!")
+
+
+# =============================================================================
+# SHAP ANALYSIS
+# =============================================================================
+
+
+def setup_shap_explainer(
+    model: keras.Model,
+    background_data: np.ndarray,
+    max_background_samples: int = 100,
+    verbose: bool = True
+) -> Optional[SHAPExplainer]:
+    """
+    Initialize SHAP explainer for model interpretability.
+
+    Args:
+        model: Trained Keras model
+        background_data: Reference data for SHAP (training subset)
+        max_background_samples: Maximum number of background samples (SHAP can be slow)
+        verbose: Print setup information
+
+    Returns:
+        SHAPExplainer object or None if SHAP not available
+    """
+    if not SHAP_AVAILABLE:
+        print("⚠️  SHAP non disponible. Installez avec: pip install shap")
+        return None
+
+    if verbose:
+        print("=" * 70)
+        print("SETUP INTERPRÉTABILITÉ - SHAP")
+        print("=" * 70)
+
+    # Limit background data size
+    if len(background_data) > max_background_samples:
+        print(f"   Limitation du background à {max_background_samples} échantillons...")
+        background_subset = background_data[:max_background_samples]
+    else:
+        background_subset = background_data
+
+    # Initialize SHAP
+    shap_explainer = SHAPExplainer(
+        model=model,
+        background_data=background_subset
+    )
+
+    if verbose:
+        print("\n✅ SHAP configuré")
+        print(f"   Background samples: {len(background_subset)}")
+        print(f"   ⚠️  Note: SHAP peut être lent pour les CNN")
+
+    return shap_explainer
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+def run_shap_analysis(
+    shap_explainer: SHAPExplainer,
+    x_data: np.ndarray,
+    indices: List[int],
+    descriptions: List[str],
+    class_names: List[str],
+    y_pred: Optional[np.ndarray] = None,
+    save_dir: Optional[Path] = None,
+) -> None:
+    """
+    Run SHAP analysis on selected samples.
+
+    Args:
+        shap_explainer: SHAP explainer object
+        x_data: Image data
+        indices: Indices of samples to analyze
+        descriptions: Description for each sample
+        class_names: List of class names
+        y_pred: Predicted class indices (optional)
+        save_dir: Directory to save figures (optional)
+    """
+    if shap_explainer is None:
+        print("⚠️  SHAP non disponible")
+        return
+
+    print("=" * 70)
+    print(f"ANALYSE SHAP - {len(indices)} ÉCHANTILLONS")
+    print("=" * 70)
+    print("⚠️  Calcul des valeurs SHAP en cours (cela peut prendre du temps)...")
+
+    if save_dir:
+        save_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\n💾 Sauvegarde dans: {save_dir}")
+
+    # Get images to analyze
+    images_to_analyze = x_data[indices]
+
+    # Calculate SHAP values for all images at once
+    print(f"\n   Calcul des valeurs SHAP pour {len(indices)} images...")
+    shap_values = shap_explainer.explain(images_to_analyze)
+
+    # Visualize each image
+    for i, (idx, desc) in enumerate(zip(indices, descriptions)):
+        print(f"\n[{i + 1}/{len(indices)}] {desc}")
+
+        img = x_data[idx].copy()
+
+        # Get predicted class
+        if y_pred is not None:
+            pred_class = y_pred[idx]
+        else:
+            pred_probs = shap_explainer.model.predict(img[np.newaxis, ...], verbose=0)
+            pred_class = np.argmax(pred_probs[0])
+
+        class_name = class_names[pred_class]
+
+        # Visualize SHAP values
+        fig = shap_explainer.visualize_image_plot(
+            img,
+            shap_values[i],
+            class_idx=pred_class,
+            class_name=class_name,
+            figsize=(12, 4)
+        )
+
+        # Add description
+        fig.suptitle(f"SHAP - {desc}", fontsize=14, fontweight="bold", y=1.02)
+
+        # Save if requested
+        if save_dir:
+            save_path = save_dir / f"shap_{i + 1:02d}.png"
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            print(f"   💾 Sauvegardé: {save_path.name}")
+
+        plt.show()
+
+        # Also create heatmap overlay
+        fig_heatmap = shap_explainer.visualize_heatmap(
+            img,
+            shap_values[i],
+            class_idx=pred_class,
+            alpha=0.4,
+            colormap='jet',
+            figsize=(12, 4)
+        )
+
+        if save_dir:
+            save_path_heatmap = save_dir / f"shap_heatmap_{i + 1:02d}.png"
+            plt.savefig(save_path_heatmap, dpi=300, bbox_inches="tight")
+            print(f"   💾 Heatmap sauvegardé: {save_path_heatmap.name}")
+
+        plt.show()
+
+    print("\n✅ Analyse SHAP terminée!")
+
+
+def compare_shap_classes(
+    shap_explainer: SHAPExplainer,
+    image: np.ndarray,
+    class_names: List[str],
+    save_dir: Optional[Path] = None,
+) -> None:
+    """
+    Compare SHAP values across all classes for a single image.
+
+    Args:
+        shap_explainer: SHAP explainer object
+        image: Image to analyze
+        class_names: List of class names
+        save_dir: Directory to save figure
+    """
+    if shap_explainer is None:
+        print("⚠️  SHAP non disponible")
+        return
+
+    print("=" * 70)
+    print("COMPARAISON SHAP INTER-CLASSES")
+    print("=" * 70)
+
+    # Calculate SHAP values
+    print("   Calcul des valeurs SHAP...")
+    shap_values = shap_explainer.explain(image[np.newaxis, ...])
+
+    # Visualize comparison
+    fig = shap_explainer.compare_classes(
+        image,
+        shap_values[0],
+        class_names,
+        figsize=(16, 4)
+    )
+
+    if save_dir:
+        save_dir.mkdir(parents=True, exist_ok=True)
+        save_path = save_dir / "shap_class_comparison.png"
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        print(f"   💾 Sauvegardé: {save_path}")
+
+    plt.show()
+
+    print("\n✅ Comparaison terminée!")
+
+
+# =============================================================================
+# COMBINED ANALYSIS
+# =============================================================================
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+def run_full_interpretability_analysis(
+    model: keras.Model,
+    x_data: np.ndarray,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    class_names: List[str],
+    background_data: Optional[np.ndarray] = None,
+    n_samples: int = 2,
+    strategy: str = "one_per_class",
+    save_dir: Optional[Path] = None,
+    use_gradcam: bool = True,
+    use_lime: bool = True,
+    use_shap: bool = False,  # SHAP disabled by default (slow)
+    preprocess_fn: Optional[Callable] = None,
+) -> None:
+    """
+    Run complete interpretability analysis with Grad-CAM, LIME, and SHAP.
+
+    Args:
+        model: Trained Keras model
+        x_data: Image data
+        y_true: True labels
+        y_pred: Predicted labels
+        class_names: List of class names
+        background_data: Background data for SHAP (training subset)
+        n_samples: Number of samples per class
+        strategy: Selection strategy ('correct', 'incorrect', 'one_per_class', 'random')
+        save_dir: Directory to save all figures
+        use_gradcam: Run Grad-CAM analysis
+        use_lime: Run LIME analysis
+        use_shap: Run SHAP analysis (WARNING: slow)
+        preprocess_fn: Preprocessing function for Grad-CAM
+    """
+    print("=" * 70)
+    print("ANALYSE D'INTERPRÉTABILITÉ COMPLÈTE")
+    print("=" * 70)
+    print(f"\nMéthodes activées:")
+    print(f"   • Grad-CAM: {'✓' if use_gradcam else '✗'}")
+    print(f"   • LIME: {'✓' if use_lime else '✗'}")
+    print(f"   • SHAP: {'✓' if use_shap else '✗'}")
+
+    # Create save directories
+    gradcam_dir = save_dir / "gradcam" if save_dir else None
+    lime_dir = save_dir / "lime" if save_dir else None
+    shap_dir = save_dir / "shap" if save_dir else None
+
+    # Select samples
+    indices, descriptions = select_sample_images(
+        x_data, y_true, y_pred, class_names,
+        n_samples=n_samples,
+        strategy=strategy
+    )
+
+    # Get predicted probabilities
+    print("\nCalcul des probabilités de prédiction...")
+    y_pred_probs = model.predict(x_data[indices], verbose=0)
+
+    # 1. Grad-CAM Analysis
+    if use_gradcam:
+        try:
+            print("\n" + "=" * 70)
+            print("1/3 - GRAD-CAM")
+            print("=" * 70)
+            gradcam = setup_interpretability(model, verbose=True)
+            run_gradcam_analysis(
+                gradcam, x_data, indices, descriptions, class_names,
+                y_pred_probs=y_pred_probs,
+                save_dir=gradcam_dir,
+                preprocess_fn=preprocess_fn
+            )
+        except Exception as e:
+            print(f"⚠️  Erreur Grad-CAM: {e}")
+
+    # 2. LIME Analysis
+    if use_lime and LIME_AVAILABLE:
+        try:
+            print("\n" + "=" * 70)
+            print("2/3 - LIME")
+            print("=" * 70)
+            lime_explainer = setup_lime_explainer(
+                model,
+                segmentation_method='quickshift',
+                num_samples=1000,
+                verbose=True
+            )
+            if lime_explainer:
+                run_lime_analysis(
+                    lime_explainer, x_data, indices, descriptions, class_names,
+                    y_pred=y_pred[indices],
+                    num_features=5,
+                    save_dir=lime_dir
+                )
+        except Exception as e:
+            print(f"⚠️  Erreur LIME: {e}")
+    elif use_lime:
+        print("\n⚠️  LIME non disponible (pip install lime)")
+
+    # 3. SHAP Analysis
+    if use_shap and SHAP_AVAILABLE:
+        try:
+            print("\n" + "=" * 70)
+            print("3/3 - SHAP")
+            print("=" * 70)
+            if background_data is None:
+                print("⚠️  Background data requis pour SHAP. Utilisation d'un subset des données.")
+                background_data = x_data[:50]
+            
+            shap_explainer = setup_shap_explainer(
+                model,
+                background_data,
+                max_background_samples=50,
+                verbose=True
+            )
+            if shap_explainer:
+                run_shap_analysis(
+                    shap_explainer, x_data, indices, descriptions, class_names,
+                    y_pred=y_pred[indices],
+                    save_dir=shap_dir
+                )
+        except Exception as e:
+            print(f"⚠️  Erreur SHAP: {e}")
+    elif use_shap:
+        print("\n⚠️  SHAP non disponible (pip install shap)")
+
+    print("\n" + "=" * 70)
+    print("✅ ANALYSE D'INTERPRÉTABILITÉ COMPLÈTE TERMINÉE")
+    print("=" * 70)
+    if save_dir:
+        print(f"\n📁 Tous les résultats sauvegardés dans: {save_dir}")
+        print(f"   • Grad-CAM: {gradcam_dir}")
+        print(f"   • LIME: {lime_dir}")
+        print(f"   • SHAP: {shap_dir}")

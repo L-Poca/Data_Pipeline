@@ -56,6 +56,13 @@ from .interpretability_utils import (
     run_gradcam_analysis,
     select_sample_images,
     get_preprocessing_function,
+    setup_lime_explainer,
+    run_lime_analysis,
+    compare_lime_segmentation,
+    setup_shap_explainer,
+    run_shap_analysis,
+    compare_shap_classes,
+    run_full_interpretability_analysis,
 )
 
 __all__ = [
@@ -86,4 +93,11 @@ __all__ = [
     "run_gradcam_analysis",
     "select_sample_images",
     "get_preprocessing_function",
+    "setup_lime_explainer",
+    "run_lime_analysis",
+    "compare_lime_segmentation",
+    "setup_shap_explainer",
+    "run_shap_analysis",
+    "compare_shap_classes",
+    "run_full_interpretability_analysis",
 ]
