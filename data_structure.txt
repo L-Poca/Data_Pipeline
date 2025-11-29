@@ -1,0 +1,105 @@
+================================================================================
+STRUCTURE DU DATASET COVID-19 RADIOGRAPHY
+================================================================================
+
+================================================================================
+ARBORESCENCE
+================================================================================
+
+data/raw/COVID-19_Radiography_Dataset/
+└── COVID-19_Radiography_Dataset/
+    ├── COVID/
+    │   ├── images/     → 3,616 images
+    │   └── masks/      → 3,616 masks
+    ├── Lung_Opacity/
+    │   ├── images/     → 6,012 images
+    │   └── masks/      → 6,012 masks
+    ├── Normal/
+    │   ├── images/     → 10,192 images
+    │   └── masks/      → 10,192 masks
+    └── Viral Pneumonia/
+        ├── images/     → 1,345 images
+        └── masks/      → 1,345 masks
+
+TOTAL: 21,165 images + 21,165 masks = 42,330 fichiers
+
+================================================================================
+FORMATS DES NOMS DE FICHIERS
+================================================================================
+
+COVID:
+------
+Images: COVID-1.png, COVID-2.png, ..., COVID-3616.png
+Masks:  COVID-1.png, COVID-2.png, ..., COVID-3616.png
+
+Lung_Opacity:
+-------------
+Images: Lung_Opacity-1.png, Lung_Opacity-2.png, ..., Lung_Opacity-6012.png
+Masks:  Lung_Opacity-1.png, Lung_Opacity-2.png, ..., Lung_Opacity-6012.png
+
+Normal:
+-------
+Images: Normal-1.png, Normal-2.png, ..., Normal-10192.png
+Masks:  Normal-1.png, Normal-2.png, ..., Normal-10192.png
+
+Viral Pneumonia:
+----------------
+Images: Viral Pneumonia-1.png, Viral Pneumonia-2.png, ..., Viral Pneumonia-1345.png
+Masks:  Viral Pneumonia-1.png, Viral Pneumonia-2.png, ..., Viral Pneumonia-1345.png
+
+================================================================================
+EXEMPLES DE FICHIERS PAR CLASSE
+================================================================================
+
+COVID/images (10 premiers):
+----------------------------
+COVID-1.png
+COVID-10.png
+COVID-100.png
+COVID-1000.png
+COVID-1001.png
+COVID-1002.png
+COVID-1003.png
+COVID-1004.png
+COVID-1005.png
+COVID-1006.png
+
+Lung_Opacity/images (10 premiers):
+-----------------------------------
+Lung_Opacity-1.png
+Lung_Opacity-10.png
+Lung_Opacity-100.png
+Lung_Opacity-1000.png
+Lung_Opacity-1001.png
+Lung_Opacity-1002.png
+Lung_Opacity-1003.png
+Lung_Opacity-1004.png
+Lung_Opacity-1005.png
+Lung_Opacity-1006.png
+
+Normal/images (10 premiers):
+-----------------------------
+Normal-1.png
+Normal-10.png
+Normal-100.png
+Normal-1000.png
+Normal-10000.png
+Normal-10001.png
+Normal-10002.png
+Normal-10003.png
+Normal-10004.png
+Normal-10005.png
+
+Viral Pneumonia/images (10 premiers):
+--------------------------------------
+Viral Pneumonia-1.png
+Viral Pneumonia-10.png
+Viral Pneumonia-100.png
+Viral Pneumonia-1000.png
+Viral Pneumonia-1001.png
+Viral Pneumonia-1002.png
+Viral Pneumonia-1003.png
+Viral Pneumonia-1004.png
+Viral Pneumonia-1005.png
+Viral Pneumonia-1006.png
+
